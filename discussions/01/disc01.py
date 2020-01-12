@@ -19,8 +19,9 @@ def data2array(filepath):
     >>> arr.shape[0]
     100000
     """
-
-    return ...
+    file = open(filepath) # Use open instead of pandas
+    file.readline() # Get rid of 'Bill'
+    return np.array([float(elem) for elem in file]) # Convert to array
 
 
 def ends_in_9(arr):
@@ -35,5 +36,7 @@ def ends_in_9(arr):
     >>> 0 <= out <= 1
     True
     """
-
-    return ...
+    
+    arr_int = np.round(arr * 100).astype(int) # Round to int
+    arr_mod = arr_int % 10 # Take remainder
+    return np.sum(arr_mod == 9) / len(arr) # Get proportion
