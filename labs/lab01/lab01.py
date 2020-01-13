@@ -25,12 +25,12 @@ def consecutive_ints(ints):
     False
     """
 
-    if len(ints) == 0:
+    if len(ints) == 0: # Empty list
         return False
 
     for k in range(len(ints) - 1):
         diff = abs(ints[k] - ints[k+1])
-        if diff == 1:
+        if diff == 1: # Consecutive differece is 1
             return True
 
     return False
@@ -57,9 +57,17 @@ def median(nums):
     True
     >>> median([1, 2, 3, 4]) == 2.5
     True
+    >>> median([0, -1, 1, 100]) == 0.5
+    True
     """
     
-    return ...
+    nums.sort()
+    if len(nums) % 2 == 0: # Even length
+        ind = len(nums) // 2
+        return (nums[ind] + nums[ind - 1]) / 2 # Average
+    else: # Odd length
+        ind = len(nums) // 2
+        return nums[ind] # List element
 
 
 # ---------------------------------------------------------------------
@@ -81,9 +89,21 @@ def same_diff_ints(ints):
     True
     >>> same_diff_ints([1,3,5,7,9])
     False
+    >>> same_diff_ints([])
+    False
+    >>> same_diff_ints([9,4,1,1,-4,-2])
+    True
     """
-
-    return ...
+    
+    if len(ints) == 0: # Empty list
+        return False
+    
+    for i in range(len(ints) - 1):
+        for j in range(i + 1, len(ints)): # Following elements
+            if np.abs(i - j) == np.abs(ints[i] - ints[j]): # Diff == Apart
+                # print(ints[i], ints[j])
+                return True
+    return False
 
 
 # ---------------------------------------------------------------------
@@ -106,9 +126,14 @@ def prefixes(s):
     >>> prefixes('aaron')
     'aaaaaraaroaaron'
     """
-
-
-    return ...
+    
+    if len(s) == 0: # Empty string
+        return s
+    
+    prefixes = ''
+    for i in range(1, len(s)+1): # End indices
+        prefixes += s[:i] # Append prefixes
+    return prefixes
 
 
 # ---------------------------------------------------------------------
@@ -131,9 +156,17 @@ def evens_reversed(N):
     '6 4 2'
     >>> evens_reversed(10)
     '10 08 06 04 02'
+    >>> evens_reversed(0)
+    ''
+    >>> evens_reversed(1)
+    ''
     """
     
-    return ...
+    evens = []
+    for num in range(N, 1, -1): # Reversed order
+        if num % 2 == 0: # Even number
+            evens.append(str(num).zfill(len(str(N))))
+    return ' '.join(evens) # Joined by space
 
 
 # ---------------------------------------------------------------------
@@ -152,9 +185,20 @@ def last_chars(fh):
     >>> fp = os.path.join('data', 'chars.txt')
     >>> last_chars(open(fp))
     'hrg'
+    >>> empty_fp = os.path.join('data', 'empty.txt')
+    >>> last_chars(open(empty_fp))
+    ''
+    >>> multi_fp = os.path.join('data', 'multipleNewLines.txt')
+    >>> last_chars(open(multi_fp))
+    's,t?.sen'
     """
-
-    return ...
+    
+    lasts = ''
+    for line in fh: # Read lines as string
+        line = line.rstrip() # Strip new lines
+        if len(line) != 0: # Not empty lines
+            lasts += line[-1]
+    return lasts
 
 
 # ---------------------------------------------------------------------
@@ -179,7 +223,7 @@ def arr_1(A):
     True
     """
 
-    return ...
+    return A * A
 
 
 def arr_2(A):
@@ -200,7 +244,7 @@ def arr_2(A):
     True
     """
 
-    return ...
+    return A % 16 == 0
 
 
 def arr_3(A):
@@ -223,8 +267,8 @@ def arr_3(A):
     >>> out.max() == 0.03
     True
     """
-
-    return ...
+    
+    return np.round(np.diff(A) / A[:-1], 2) # Round 2 decimal
 
 
 def arr_4(A):
@@ -246,7 +290,8 @@ def arr_4(A):
     True
     """
 
-    return ...
+    leftover = np.cumsum(20 % A) >= A # Cumulative sum >= A
+    return np.where(leftover)[0][0] # First True 
 
 
 # ---------------------------------------------------------------------
@@ -272,8 +317,51 @@ def movie_stats(movies):
     >>> isinstance(out.loc['second_lowest'], str)
     True
     """
+    dic = {}
+    
+    try: # Total number of years
+        num_years = len(movies['Year'])
+        dic.update({'num_years': num_years})
+    except:
+        pass
 
-    return ...
+    try: # Total number of movies
+        tot_movies = np.sum(movies['Number of Movies'])
+        dic.update({'tot_movies': tot_movies})
+    except:
+        pass
+
+    try: # Earliest year with fewest movies
+        yr_fewest_movies = np.min(movies[movies['Number of Movies'] == np.min(movies['Number of Movies'])]['Year'])
+        dic.update({'yr_fewest_movies': yr_fewest_movies})
+    except:
+        pass
+
+    try: # Average gross
+        avg_gross = np.mean(movies['Total Gross'])
+        dic.update({'avg_gross': avg_gross})
+    except:
+        pass
+
+    try: # Year with highest gross per movie
+        highest_per_movie = movies.loc[(movies['Total Gross'] / movies['Number of Movies']).idxmax()]['Year']
+        dic.update({'highest_per_movie': highest_per_movie})
+    except:
+        pass
+
+    try: # Name of top movie during the second-lowest total gross year
+        second_lowest = movies[movies['Total Gross'] == movies['Total Gross'].nsmallest().iloc[1]]['#1 Movie'].iloc[0]
+        dic.update({'second_lowest': second_lowest})
+    except:
+        pass
+
+    try: # Average number of movies made the year after a Harry Potter movie was the top movie
+        avg_after_harry = np.mean(movies[movies['Year'].isin(movies[movies['#1 Movie'].str.contains(pat='Harry Potter')]['Year'].values + 1)]['Number of Movies'])
+        dic.update({'avg_after_harry': avg_after_harry})
+    except:
+        pass
+
+    return pd.Series(dic)
     
 
 # ---------------------------------------------------------------------
@@ -310,7 +398,18 @@ def parse_malformed(fp):
     True
     """
 
-    return ...
+    df = pd.DataFrame(columns=['first', 'last', 'weight', 'height', 'geo'])
+    with open(fp) as file:
+        file.readline() # Get rid of title
+        for i, line in enumerate(file):
+            content = line.rstrip().split(',') # Strip new lines
+            content = list(filter(None, content)) # Remove empty strings
+            content[-2:] = [','.join(content[-2:])] # Combine geo elements
+            content = list(map(lambda it: it.strip('\"'), content)) # Strip elements of ""
+            content[2] = float(content[2]) # Cast weight as float
+            content[3] = float(content[3]) # Cast height as float
+            df = df.append(pd.Series(content, index=['first', 'last', 'weight', 'height', 'geo']), ignore_index=True)
+    return df
 
 
 # ---------------------------------------------------------------------
