@@ -185,12 +185,6 @@ def last_chars(fh):
     >>> fp = os.path.join('data', 'chars.txt')
     >>> last_chars(open(fp))
     'hrg'
-    >>> empty_fp = os.path.join('data', 'empty.txt')
-    >>> last_chars(open(empty_fp))
-    ''
-    >>> multi_fp = os.path.join('data', 'multipleNewLines.txt')
-    >>> last_chars(open(multi_fp))
-    's,t?.sen'
     """
     
     lasts = ''
