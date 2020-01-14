@@ -217,7 +217,7 @@ def arr_1(A):
     True
     """
 
-    return A * A
+    return A + np.sqrt(range(len(A)))
 
 
 def arr_2(A):
@@ -282,10 +282,19 @@ def arr_4(A):
     True
     >>> out == 1
     True
+    
+    >>> stocks1 = np.array([])
+    >>> arr_4(stocks1)
+    -1
+    >>> stocks2 = np.array([2, 21])
+    >>> arr_4(stocks2)
+    -1
     """
 
     leftover = np.cumsum(20 % A) >= A # Cumulative sum >= A
-    return np.where(leftover)[0][0] # First True 
+    if np.any(leftover): # Have bought with leftover
+        return np.where(leftover)[0][0] # First True 
+    return -1
 
 
 # ---------------------------------------------------------------------
@@ -314,7 +323,7 @@ def movie_stats(movies):
     dic = {}
     
     try: # Total number of years
-        num_years = len(movies['Year'])
+        num_years = len(movies['Year'].unique())
         dic.update({'num_years': num_years})
     except:
         pass
@@ -392,14 +401,14 @@ def parse_malformed(fp):
     True
     """
 
-    df = pd.DataFrame(columns=['first', 'last', 'weight', 'height', 'geo'])
+    df = pd.DataFrame(columns=['first', 'last', 'weight', 'height', 'geo']) # Header names
     with open(fp) as file:
         file.readline() # Get rid of title
         for i, line in enumerate(file):
             content = line.rstrip().split(',') # Strip new lines
             content = list(filter(None, content)) # Remove empty strings
             content[-2:] = [','.join(content[-2:])] # Combine geo elements
-            content = list(map(lambda it: it.strip('\"'), content)) # Strip elements of ""
+            content = list(map(lambda elem: elem.strip('\"'), content)) # Strip elements of ""
             content[2] = float(content[2]) # Cast weight as float
             content[3] = float(content[3]) # Cast height as float
             df = df.append(pd.Series(content, index=['first', 'last', 'weight', 'height', 'geo']), ignore_index=True)
