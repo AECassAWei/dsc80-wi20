@@ -323,7 +323,7 @@ def movie_stats(movies):
     dic = {}
     
     try: # Total number of years
-        num_years = len(movies['Year'].unique())
+        num_years = movies['Year'].nunique()
         dic.update({'num_years': num_years})
     except:
         pass

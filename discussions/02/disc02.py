@@ -18,8 +18,8 @@ def question01(data, labels):
     >>> out.index.tolist() == labels
     True
     """
-
-    return ...
+    
+    return pd.DataFrame(data=data, index=labels) # the dataframe
 
 
 def question02(ser):
@@ -34,6 +34,6 @@ def question02(ser):
     True
     """
 
-    return ...
+    return ser[ser % 3 == 0].index
 
 

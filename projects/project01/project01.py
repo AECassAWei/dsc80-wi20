@@ -32,7 +32,57 @@ def get_assignment_names(grades):
     True
     '''
     
-    return ...
+    dic = {}
+    try: # Extract labs
+        lab = extract_values(grades, '^lab[0-9]{2}$')
+        dic.update({'lab':lab})
+    except:
+        pass
+
+    try: # Extract projects
+        project = extract_values(grades, '^project[0-9]{2}$')
+        dic.update({'project':project})
+    except:
+        pass
+
+    try: # Extract midterm
+        midterm = extract_values(grades, '^Midterm$')
+        dic.update({'midterm':midterm})
+    except:
+        pass
+
+    try: # Extract final
+        final = extract_values(grades, '^Final$')
+        dic.update({'final':final})
+    except:
+        pass
+
+    try: # Extract discussions
+        disc = extract_values(grades, '^discussion[0-9]{2}$')
+        dic.update({'disc':disc})
+    except:
+        pass
+
+    try: # Extract checkpoints
+        checkpoint = extract_values(grades, '^project[0-9]{2}_checkpoint[0-9]{2}$')
+        dic.update({'checkpoint':checkpoint})
+    except:
+        pass
+    
+    return dic
+
+# Helper function to extract corresponding column values from df
+def extract_values(df, pat):
+    """
+    Extracts pat from df keys, and returns
+    a list of strings corresponding to pat
+    
+    :param df: dataframe to extract keys from
+    :param pat: pattern to fit
+    :return: a list of values corresponding to pat
+    """
+    
+    return list(df.columns[df.columns.str.contains(pat)])
 
 
 # ---------------------------------------------------------------------
@@ -55,7 +105,20 @@ def projects_total(grades):
     >>> 0.7 < out.mean() < 0.9
     True
     '''
-    return ...
+    
+    grades_mod = grades.fillna(0) # Fill NaN with 0, deep copy
+    projects = extract_values(grades, '^project[0-9]{2}$') # Project scores
+    free_resp = extract_values(grades, '^project[0-9]{2}_free_response$') # Free response scores
+
+    total = []
+    for project in projects: # Loop through each project
+        if (project + '_free_response') in free_resp: # If project has free response
+            total.append((grades_mod[project] + grades_mod[project + '_free_response'])
+                         / (grades_mod[project + ' - Max Points'] + grades_mod[project + '_free_response - Max Points']))
+        else: # If does not have free response
+            total.append(grades_mod[project] / grades_mod[project + ' - Max Points'])
+
+    return pd.Series(np.sum(np.array(total) / len(projects), axis=0)) # Calculate total project score
 
 
 # ---------------------------------------------------------------------
@@ -81,8 +144,26 @@ def last_minute_submissions(grades):
     >>> (out > 0).sum()
     8
     """
+    
+    threshold = 8 * 60 * 60 # 8 hrs
+    lab_late = extract_values(grades, '^lab[0-9]{2} - Lateness') # Lab lateness columns
+    grades_mod = grades[lab_late] # Dataframe containing lab lateness columns
+    grades_mod = grades_mod.apply(string_to_seconds) # Submission later than threshold
+    counts = np.sum(grades_mod[grades_mod != 0] < threshold, axis=0) # Number of late submission
+    counts.index = counts.index.str.slice(0, 5) # Slice index
+    return counts
 
-    return ...
+# Helper function to extract seconds from string
+def string_to_seconds(series):
+    """
+    Converts string to seconds
+    
+    :param series: string to split by '：'
+    :return: seeconds corresponds to the string
+    """
+    
+    lst = np.array(series.str.split(':')) # Split hour, minute, second by ':'
+    return np.array([int(elem[0]) * 3600 + int(elem[1]) * 60 + int(elem[2]) for elem in lst]) # Return seconds
 
 
 # ---------------------------------------------------------------------
@@ -103,8 +184,31 @@ def lateness_penalty(col):
     >>> set(out.unique()) <= {1.0, 0.9, 0.8, 0.5}
     True
     """
-        
-    return ...
+    
+    penalty_v = np.vectorize(penalty)
+    return pd.Series(penalty_v(string_to_seconds(col)))
+
+# Helper function to calculate individual penalty
+def penalty(late):
+    """
+    Calculate penalty of true lateness
+    
+    :param late: time of lateness
+    :return: corresponding penalty
+    """
+
+    threshold = 8 * 60 * 60 # 8 hrs
+    one_week = 7 * 24 * 60 * 60 # One week = 0.9
+    two_weeks = 14 * 24 * 60 * 60 # Two weeks = 0.8, Beyond = 0.5
+    
+    if late < threshold: # Submitted on time
+        return 1.0
+    elif late < one_week: # Within one week, 10%
+        return 0.9
+    elif late < two_weeks: # Within two weeks, 20%
+        return 0.8
+    else: # Two weeks and beyond, 50%
+        return 0.5
 
 
 # ---------------------------------------------------------------------
@@ -129,8 +233,20 @@ def process_labs(grades):
     >>> np.all((0.65 <= out.mean()) & (out.mean() <= 0.90))
     True
     """
+    
+    all_labs = extract_values(grades, '^lab[0-9]{2}') # All labs columns
+    labs = extract_values(grades, '^lab[0-9]{2}$') # Labs columns
+    lab_late = extract_values(grades, '^lab[0-9]{2} - Lateness') # Lab lateness columns
+    
+    grades_mod = grades[all_labs].fillna(0) # Fill NaN with 0, deep copy
+    penalty = grades_mod[lab_late].apply(lateness_penalty).rename(columns=lambda col: col[0:5] + ' - Penalty') # Create penalty columns
+    grades_mod = pd.concat([grades_mod, penalty], axis=1) # Append dataframes
+    
+    df = pd.DataFrame() # Create new dataframe to return
+    for lab in labs: # Loop through each lab
+        df[lab] = grades_mod[lab] * grades_mod[lab + ' - Penalty'] / grades_mod[lab + ' - Max Points']
 
-    return ...
+    return df
 
 
 # ---------------------------------------------------------------------
@@ -151,8 +267,9 @@ def lab_total(processed):
     >>> np.isclose(lab_total(processed), 0.95).all()
     True
     """
-
-    return ...
+    
+    min_score = processed.min(axis=1) # Get minimum score
+    return (np.sum(processed, axis=1) - min_score) / (len(processed.columns) - 1) # Calculate total lab score
 
 
 # ---------------------------------------------------------------------
@@ -174,9 +291,36 @@ def total_points(grades):
     >>> 0.7 < out.mean() < 0.9
     True
     """
-        
-    return ...
+    
+    lab_tot = lab_total(process_labs(grades)) # Labs total
+    proj_tot = projects_total(grades) # Projects total
+    chpt_tot = other_total(grades, 'checkpoint') # Checkpoints total
+    disc_tot = other_total(grades, 'disc') # Discussions total
+    mid = other_total(grades, 'midterm') # Midterm
+    fin = other_total(grades, 'final') # Final
+    total = lab_tot * 0.2 + proj_tot * 0.3 + chpt_tot * 0.025 + disc_tot * 0.025 + mid * 0.15 + fin * 0.3
+    return total
 
+# Helper function to calculate disc, checkpoint & exams scores
+def other_total(grades, name):
+    """
+    Given the dataframe and the area name, calculate
+    the total grades for that area.
+    
+    :param grades: dataframe to process
+    :param name: area to process grades
+    :return: a Series of total area grades
+    """
+    
+    names = get_assignment_names(grades) # Get names
+    area = names.get(name) # Get cols of name
+    
+    df = pd.DataFrame()
+    for ar in area: # Loop through each name
+        df[ar] = grades[ar] / grades[ar + ' - Max Points']
+    
+    total = (np.sum(df, axis=1)) / (len(df.columns)) # Calculate total score
+    return total
 
 def final_grades(total):
     """
@@ -190,8 +334,28 @@ def final_grades(total):
     True
     """
 
-    return ...
+    return total.apply(score_to_grades)
 
+# Helper function to convert scores to letter grades
+def score_to_grades(score):
+    """
+    Given the total score of a student, calculate the 
+    corresponding letter grade.
+    
+    :param score: total score to convert
+    :return: convert total score to letter grade
+    """
+    
+    if score >= 0.90:
+        return 'A'
+    elif score >= 0.80:
+        return 'B'
+    elif score >= 0.70:
+        return 'C'
+    elif score >= 0.60:
+        return 'D'
+    else:
+        return 'F'
 
 def letter_proportions(grades):
     """
@@ -208,8 +372,11 @@ def letter_proportions(grades):
     >>> out.sum() == 1.0
     True
     """
+    
+    total = total_points(grades) # Calculate total scores
+    letter = final_grades(total) # Convert scores to grades
+    return letter.value_counts() / len(letter) # Count occurrence
 
-    return ...
 
 # ---------------------------------------------------------------------
 # Question # 8
@@ -231,7 +398,7 @@ def simulate_pval(grades, N):
     True
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -255,7 +422,7 @@ def total_points_with_noise(grades):
     True
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -282,7 +449,7 @@ def short_answer():
     True
     """
 
-    return ...
+    return None
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
