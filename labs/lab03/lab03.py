@@ -17,7 +17,7 @@ def car_null_hypoth():
     >>> set(car_null_hypoth()) <= set(range(1,11))
     True
     """
-    return ...
+    return [3, 6, 7]
 
 
 def car_alt_hypoth():
@@ -28,7 +28,7 @@ def car_alt_hypoth():
     >>> set(car_alt_hypoth()) <= set(range(1,11))
     True
     """
-    return ...
+    return [1, 4, 8]
 
 
 def car_test_stat():
@@ -39,7 +39,7 @@ def car_test_stat():
     >>> set(car_test_stat()) <= set(range(1,5))
     True
     """
-    return ...
+    return [2, 4]
 
 
 def car_p_value():
@@ -50,7 +50,7 @@ def car_p_value():
     >>> car_p_value() in [1,2,3,4,5]
     True
     """
-    return ...
+    return 5
 
 
 # ---------------------------------------------------------------------
@@ -68,7 +68,14 @@ def clean_apps(df):
     True
     '''
     
-    return ...
+    cleaned = df.copy() # Deep copy of dataframe
+    cleaned['Reviews'] = cleaned['Reviews'].astype(int) # Cast Reviews to int
+    cleaned['Size'] = cleaned['Size'].apply(size_to_kilo).astype(float) # Convert size to kilobyte
+    cleaned['Installs'] = cleaned['Installs'].str.replace(',', '').str.replace('+', '').astype(int) # Strip , +
+    cleaned['Type'] = cleaned['Type'].apply(lambda tp: 1 if tp == 'Free' else 0).astype(int) # Binary format of Type
+    cleaned['Price'] = cleaned['Price'].str.replace('$', '').astype(float) # Strip $ and convert to float
+    cleaned['Last Updated'] = cleaned['Last Updated'].str[-4:].astype(int) # Strip everthing but the year
+    return cleaned
 
 
 def store_info(cleaned):
@@ -82,9 +89,45 @@ def store_info(cleaned):
     >>> info[2] in cleaned.Category.unique()
     True
     '''
+    
+    # Q2.1
+    df_install = cleaned.groupby('Last Updated').aggregate({'App': 'count', 'Installs': 'median'}) # Aggregate count over App, median over Installs
+    year = df_install[df_install['App'] >= 100]['Installs'].idxmax() # Year with App >= 100, Installs median max
 
+    # Q2.2
+    df_rating = cleaned.groupby('Content Rating')['Rating'].min() # Group by Content Rating to find min Rating
+    cont_rate = df_rating.idxmax() # Content Rating with max min ratings
 
-    return ...
+    # Q2.3 # ASK!!!!!!!!!!!!!!!!!!!!! include free/$0 app?
+    df_categh = cleaned.groupby('Category')['Price'].mean() # Group by Category to find average Price
+    # df_categ = cleaned[cleaned['Type'] == 0].groupby('Category')['Price'].mean() # Not include Free App
+    categ_h = df_categh.idxmax()
+
+    # Q2.4
+    df_categl = cleaned[cleaned['Reviews'] >= 1000].groupby('Category')['Rating'].mean()
+    categ_l = df_categl.idxmin()
+
+    return [year, cont_rate, categ_h, categ_l]
+
+# Helper function to convert mega to kilo
+def size_to_kilo(size):
+    """
+    Convert Megabyte and Kilobyte to Kilobytes,
+    and strip string off M or K.
+    
+    :param size: string to convert
+    :return: float, the converted number
+    """
+    
+    if size == np.nan: # No size info
+        return 0
+    
+    prev, last = size[:-1], size[-1]
+    if last == 'M': # Megabyte
+        return float(prev) * 1000
+    else: # Kilobyte
+        return float(prev)
+
 
 # ---------------------------------------------------------------------
 # Question 3
@@ -101,8 +144,10 @@ def std_reviews_by_app_cat(cleaned):
     >>> np.all(abs(out.select_dtypes(include='number').mean()) < 10**-7)  # standard units should average to 0!
     True
     """
-
-    return ...
+    
+    review_by_categ = cleaned[['Category', 'Reviews']].copy() # Deep copy of cleaned 'Category' & 'Reviews'
+    review_by_categ['Reviews'] = review_by_categ.groupby('Category')['Reviews'].transform(standard_units) # Transform into standard units
+    return review_by_categ
 
 
 def su_and_spread():
@@ -122,7 +167,18 @@ def su_and_spread():
        'VIDEO_PLAYERS', 'NEWS_AND_MAGAZINES', 'MAPS_AND_NAVIGATION']
     True
     """
-    return ...
+    return ['equal', 'GAME']
+
+# Helper function to calculate standard units
+def standard_units(nums):
+    """
+    Convert any array/Series of numbers to standard units.
+    
+    :param nums: an array of number
+    :return: standardized array/Series of nums
+    """
+    
+    return (nums - np.mean(nums))/np.std(nums)
 
 
 # ---------------------------------------------------------------------
@@ -147,8 +203,13 @@ def read_survey(dirname):
     ...
     FileNotFoundError: ... 'nonexistentfile'
     """
-
-    return ...
+    
+    surveys = pd.DataFrame(columns=['first name', 'last name', 'current company', 'job title', 'email', 'university'])
+    for fp in np.array(os.listdir(dirname))[pd.Series(os.listdir(dirname)).str.contains('^survey[0-9]+.csv$')]: # Read through file names
+        df = pd.read_csv(os.path.join(dirname, fp)) # Read from directory path
+        df.columns = df.columns.str.lower().str.replace('_', ' ') # Standardize column names
+        surveys = pd.concat([surveys, df], ignore_index=True, sort=False) # Append new df to surveys
+    return surveys
 
 
 def com_stats(df):
@@ -166,8 +227,21 @@ def com_stats(df):
     >>> all([isinstance(x, str) for x in out])
     True
     """
+    
+    df_c = df.copy().fillna('') # Deep copy, fill NaN with empty string
+    name = df_c[~(df_c['first name'] == '')]['first name'].value_counts() # Johannah
+    name_ind = name[name == name.max()].sort_index(ascending=False).idxmax()
 
-    return ...
+    job = df_c[~(df_c['job title'] == '')]['job title'].value_counts() # Chemical Engineer
+    job_ind = job[job == job.max()].sort_index(ascending=False).idxmax()
+
+    univer = df_c[~(df_c['university'] == '')]['university'].value_counts() # Southwest University
+    univer_ind = univer[univer == univer.max()].sort_index(ascending=False).idxmax()
+
+    comp = df_c[(df_c['email'].str.contains('.com$')) & ~(df_c['current company'] == '')]['current company'].value_counts() # Tillman LLC
+    comp_ind = comp[comp == comp.max()].sort_index(ascending=False).idxmax()
+    
+    return [name_ind, job_ind, univer_ind, comp_ind]
 
 
 # ---------------------------------------------------------------------
@@ -194,7 +268,12 @@ def combine_surveys(dirname):
     FileNotFoundError: ... 'nonexistentfile'
     """
 
-    return ...
+    dataframes = [] # List to hold all dataframes
+    for fp in np.array(os.listdir(dirname))[pd.Series(os.listdir(dirname)).str.contains('^favorite[0-9]+.csv$')]: # Read through file names
+        df = pd.read_csv(os.path.join(dirname, fp)) # Read from directory path
+        dataframes.append(df.set_index('id')) # Append dataframe
+    favorites = pd.concat(dataframes, axis=1, sort=False) # Concatenate csv
+    return favorites
 
 
 def check_credit(df):
@@ -212,7 +291,30 @@ def check_credit(df):
     (1000, 2)
     """
 
-    return ...
+    df_c =  df.copy().replace('\(no ', np.nan, regex=True) # Deep copy & Data Cleaning
+    cols = np.array(df_c.columns)[np.array(df_c.columns) != 'name'] # Array of cols without 'name'
+    
+    ind_prop = df_c[cols].apply(prop_complete, axis=1) # Individual EC, apply prop to rows
+    ind_extra = (ind_prop >= 0.75).replace(True, 5).rename('extra credit') # Individual EC Series
+    
+    class_prop = df_c[cols].apply(prop_complete, axis=0) # Class EC, apply prop to col
+    class_extra = np.any(class_prop > 0.90) # Any question 90% completion
+    if class_extra: # If 90% completion for any question, class extra credit
+        ind_extra = ind_extra + 1
+    
+    df_extra = pd.concat([df['name'], ind_extra], axis=1)
+    return df_extra
+
+# Helper function to check proportion of completion
+def prop_complete(lst):
+    """
+    Given a row/col, check prop of not empty string.
+    
+    :param lst: col/row to check
+    :return: prop of completion
+    """
+    return np.count_nonzero(~lst.isna()) / len(lst)
+
 
 # ---------------------------------------------------------------------
 # Question # 6
@@ -232,7 +334,10 @@ def at_least_once(pets, procedure_history):
     >>> out < len(pets)
     True
     """
-    return ...
+    
+    proc_hist = procedure_history.groupby('PetID', as_index=False).count()[['PetID', 'Date']].rename(columns={'Date': 'Count'}) # Pet procedure counts
+    pet_proc = pd.merge(pets, proc_hist, how = "left", on='PetID') # Pet procedure dataframe
+    return np.count_nonzero(~pet_proc['Count'].isna())
 
 
 def pet_name_by_owner(owners, pets):
@@ -252,7 +357,10 @@ def pet_name_by_owner(owners, pets):
     >>> 'Cookie' in out.values
     True
     """
-    return ...
+    
+    pets_owners = pd.merge(pets, owners.rename(columns={'Name':'First Name'}), on='OwnerID')
+    owned = pets_owners.groupby(['OwnerID', 'First Name']).aggregate({'Name':concat_pets}).reset_index('OwnerID', drop=True)#.loc['Lee']
+    return owned['Name']
 
 
 def total_cost_per_owner(owners, pets, procedure_history, procedure_detail):
@@ -273,9 +381,25 @@ def total_cost_per_owner(owners, pets, procedure_history, procedure_detail):
     >>> set(out.index) <= set(owners['OwnerID'])
     True
     """
+    
+    proc_full = pd.merge(procedure_detail, procedure_history, on=['ProcedureType', 'ProcedureSubCode']) # Procedure costs
+    pet_proc_full = pd.merge(pets, proc_full, how = "left", on='PetID') # Pets procedures
+    pet_owner_all = pd.merge(pet_proc_full, owners.rename(columns={'Name':'First Name'}), on='OwnerID') # Every information
+    return pet_owner_all.groupby('OwnerID')['Price'].sum()
 
-    return ...
-
+# Helper function to concatenate pet names
+def concat_pets(strs):
+    """
+    Concatenate pet names.
+    
+    :param strs: strings to parse in
+    :return: string if one pet name, list if more
+    """
+    
+    if len(strs) ==  1: # If only one string
+        return np.sum(strs)
+    else: # If more
+        return list(strs)
 
 
 # ---------------------------------------------------------------------

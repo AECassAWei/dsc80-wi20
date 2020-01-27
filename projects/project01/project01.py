@@ -312,12 +312,13 @@ def other_total(grades, name):
     :return: a Series of total area grades
     """
     
-    names = get_assignment_names(grades) # Get names
+    grades_mod = grades.fillna(0) # Fill NaN with 0, deep copy
+    names = get_assignment_names(grades_mod) # Get names
     area = names.get(name) # Get cols of name
     
     df = pd.DataFrame()
     for ar in area: # Loop through each name
-        df[ar] = grades[ar] / grades[ar + ' - Max Points']
+        df[ar] = grades_mod[ar] / grades_mod[ar + ' - Max Points']
     
     total = (np.sum(df, axis=1)) / (len(df.columns)) # Calculate total score
     return total
@@ -397,8 +398,19 @@ def simulate_pval(grades, N):
     >>> 0 <= out <= 0.1
     True
     """
-
-    return None
+    
+    total = total_points(grades).rename('Score') # Final grade
+    info_all = pd.concat([grades['Level'], total], axis=1) # Dataframe with grade & level
+    num = info_all['Level'].value_counts()['SO'] # Number of Sophomore students
+    obs = info_all.groupby('Level').mean().loc['SO', 'Score'] # Score of Sophomore students
+    
+    samples = []
+    prop_distr = info_all['Score'].value_counts(normalize=True) # Construct simulation
+    for i in range(N):
+        sample = np.random.choice(prop_distr.index, p=prop_distr, size=num, replace=False)
+        samples.append(sample.mean())
+    
+    return np.count_nonzero(samples >= obs) / N # Return p-value
 
 
 # ---------------------------------------------------------------------
@@ -422,8 +434,54 @@ def total_points_with_noise(grades):
     True
     """
 
-    return None
+    # Project grades
+    grades_mod = grades.fillna(0) # Fill NaN with 0, deep copy
+    projects = extract_values(grades, '^project[0-9]{2}$') # Project scores
+    free_resp = extract_values(grades, '^project[0-9]{2}_free_response$') # Free response scores
+    proj_tb = pd.DataFrame()
+    for project in projects: # Loop through each project
+        if (project + '_free_response') in free_resp: # If project has free response
+            proj_tb[project] = pd.Series((grades_mod[project] + grades_mod[project + '_free_response'])
+                         / (grades_mod[project + ' - Max Points'] + grades_mod[project + '_free_response - Max Points']))
+        else: # If does not have free response
+            proj_tb[project] = pd.Series(grades_mod[project] / grades_mod[project + ' - Max Points'])
+    proj_f = np.clip(proj_tb + np.random.normal(0, 0.02, size=(proj_tb.shape[0], proj_tb.shape[1])), 0, 1) # Add randomness
+    tot_proj = pd.Series(np.sum(proj_f, axis=1) / len(projects)) # Calculate total project score
+    
+    # Lab grades
+    lab_tb = process_labs(grades_mod) # Get lab proportion dataframe 
+    lab = np.clip(lab_tb + np.random.normal(0, 0.02, size=(lab_tb.shape[0], lab_tb.shape[1])), 0, 1) # Add randomness
+    tot_lab = lab_total(lab) # Calculate final lab grade
+    
+    # Other grades
+    chpt_tot = other_total_ran(grades, 'checkpoint') # Checkpoints total
+    disc_tot = other_total_ran(grades, 'disc') # Discussions total
+    mid = other_total_ran(grades, 'midterm') # Midterm
+    fin = other_total_ran(grades, 'final') # Final
+    noise = tot_lab * 0.2 + tot_proj * 0.3 + chpt_tot * 0.025 + disc_tot * 0.025 + mid * 0.15 + fin * 0.3
+    return noise
 
+# Helper function to calculate (with randomness) disc, checkpoint & exams scores
+def other_total_ran(grades, name):
+    """
+    Given the dataframe and the area name, calculate
+    the total grades for that area.
+    
+    :param grades: dataframe to process
+    :param name: area to process grades
+    :return: a Series of total area grades
+    """
+    names = get_assignment_names(grades) # Get names
+    area = names.get(name) # Get cols of name
+    
+    df = pd.DataFrame()
+    for ar in area: # Loop through each name
+        df[ar] = grades[ar] / grades[ar + ' - Max Points']
+    
+    df_fin = np.clip(df + np.random.normal(0, 0.02, size=(df.shape[0], df.shape[1])), 0, 1)
+    
+    total = (np.sum(df_fin, axis=1)) / (len(df_fin.columns)) # Calculate total score
+    return total
 
 # ---------------------------------------------------------------------
 # Question #10
@@ -449,7 +507,23 @@ def short_answer():
     True
     """
 
-    return None
+    short_answer = [
+        # Q0
+        'The average difference between total_points and total_points_with_noise is 0.0027, which is close to 0.',
+        
+        # Q1
+        85.42, 
+        
+        # Q2
+        [80.1869, 86.1682], 
+        
+        # Q3
+        0.06916, 
+        
+        # Q4
+        True]
+    
+    return short_answer
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
