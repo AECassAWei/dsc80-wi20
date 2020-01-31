@@ -23,8 +23,17 @@ def get_san(infp, outfp):
     (53, 31)
     >>> os.remove(outfp)
     """
-
-    return ...
+    header = False # Does not have headers
+    with open(outfp, "w") as file:
+        iters = pd.read_csv(infp, chunksize=1000, dtype={'ORIGIN_AIRPORT':str, 'DESTINATION_AIRPORT':str})
+        for df in iters:
+            san_2015 = df[(df['YEAR'] == 2015) & ((df['ORIGIN_AIRPORT'] == 'SAN') | (df['DESTINATION_AIRPORT'] == 'SAN'))] # Year=2015, DEP/ARR=SAN
+            if header: # Have headers already
+                san_2015.to_csv(file, mode='a', index=False, header=False)
+            else: # Does not have headers
+                san_2015.to_csv(file, mode='a', index=False)
+                header = True
+    return None
 
 
 def get_sw_jb(infp, outfp):
@@ -43,8 +52,17 @@ def get_sw_jb(infp, outfp):
     (73, 31)
     >>> os.remove(outfp)
     """
-
-    return ...
+    header = False # Does not have headers
+    with open(outfp, "w") as file:
+        iters = pd.read_csv(infp, chunksize=1000, dtype={'AIRLINE':str, 'ORIGIN_AIRPORT':str, 'DESTINATION_AIRPORT':str})
+        for df in iters:
+            jbsw_2015 = df[(df['YEAR'] == 2015) & ((df['AIRLINE'] == 'B6') | (df['AIRLINE'] == 'WN'))] # Year=2015, Airline=JetBlue/SouthWest
+            if header: # Have headers already
+                jbsw_2015.to_csv(file, mode='a', index=False, header=False)
+            else: # Does not have headers
+                jbsw_2015.to_csv(file, mode='a', index=False)
+                header = True
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -64,7 +82,37 @@ def data_kinds():
     True
     """
 
-    return ...
+    return ({'YEAR': 'Q',
+             'MONTH': 'O', # Month can be ordinal and quantitative
+             'DAY': 'O', 
+             'DAY_OF_WEEK': 'O', # DayOfWeek can be ordinal and quantitative
+             'AIRLINE': 'N',
+             'FLIGHT_NUMBER': 'N', 
+             'TAIL_NUMBER': 'N',
+             'ORIGIN_AIRPORT': 'N',
+             'DESTINATION_AIRPORT': 'N',
+             'SCHEDULED_DEPARTURE': 'Q',
+             'DEPARTURE_TIME': 'Q',
+             'DEPARTURE_DELAY': 'Q',
+             'TAXI_OUT': 'Q',
+             'WHEELS_OFF': 'Q',
+             'SCHEDULED_TIME': 'Q',
+             'ELAPSED_TIME': 'Q',
+             'AIR_TIME': 'Q',
+             'DISTANCE': 'Q',
+             'WHEELS_ON': 'Q',
+             'TAXI_IN': 'Q',
+             'SCHEDULED_ARRIVAL': 'Q',
+             'ARRIVAL_TIME': 'Q',
+             'ARRIVAL_DELAY': 'Q',
+             'DIVERTED': 'Q', # boolean would be ordinal? Where is ordinal number???
+             'CANCELLED': 'Q',# boolean would be ordinal?
+             'CANCELLATION_REASON': 'N',
+             'AIR_SYSTEM_DELAY': 'Q',
+             'SECURITY_DELAY': 'Q',
+             'AIRLINE_DELAY': 'Q',
+             'LATE_AIRCRAFT_DELAY': 'Q',
+             'WEATHER_DELAY': 'Q'})
 
 
 def data_types():
@@ -80,7 +128,37 @@ def data_types():
     True
     """
 
-    return ...
+    return ({'YEAR': int,
+             'MONTH': int,
+             'DAY': int,
+             'DAY_OF_WEEK': int,
+             'AIRLINE': str,
+             'FLIGHT_NUMBER': str,
+             'TAIL_NUMBER': str,
+             'ORIGIN_AIRPORT': str,
+             'DESTINATION_AIRPORT': str,
+             'SCHEDULED_DEPARTURE': int,
+             'DEPARTURE_TIME': float,
+             'DEPARTURE_DELAY': float,
+             'TAXI_OUT': float,
+             'WHEELS_OFF': float,
+             'SCHEDULED_TIME': int,
+             'ELAPSED_TIME': float,
+             'AIR_TIME': float,
+             'DISTANCE': int,
+             'WHEELS_ON': float,
+             'TAXI_IN': float,
+             'SCHEDULED_ARRIVAL': int,
+             'ARRIVAL_TIME': float,
+             'ARRIVAL_DELAY': float,
+             'DIVERTED': bool,
+             'CANCELLED': bool,
+             'CANCELLATION_REASON': str,
+             'AIR_SYSTEM_DELAY': float,
+             'SECURITY_DELAY': float,
+             'AIRLINE_DELAY': float,
+             'LATE_AIRCRAFT_DELAY': float,
+             'WEATHER_DELAY': float})
 
 
 # ---------------------------------------------------------------------
@@ -115,7 +193,43 @@ def basic_stats(flights):
     >>> out.columns.tolist() == cols
     True
     """
-    return ...
+    flights_AD = flights.copy()
+    flights_AD['DEP_ARR'] = flights_AD['DESTINATION_AIRPORT'].apply(lambda des: 'ARRIVING' if des == 'SAN' else 'DEPARTING')
+    
+    # Helper function to get the airline with longest flight
+    def airline(series):
+        """
+        Get the airline code with the longest flight.
+
+        :param series: arrival delay series
+        :return: airline code of longest arrival delay
+        """
+        return flights_AD.loc[series.idxmax]['AIRLINE']
+
+    # Helper function to get the top three months of greatest num of flights
+    def top_months(series):
+        """
+        Get the top three months of greatest number of flights.
+
+        :param series: arrival delay series
+        :return: list of top three months
+        """
+        pivot_tab = flights_AD.pivot_table(
+            values='YEAR', 
+            index='MONTH',
+            columns=series,
+            aggfunc='count'
+        ).sort_values(by=series.name, ascending=False) # Sort by number of flights
+        return list(pivot_tab.index[:3]) # Return top three index
+
+    agg = (flights_AD
+     .groupby('DEP_ARR')
+     .aggregate({'YEAR':'count', # Number of arriving and departing flights 
+                 'ARRIVAL_DELAY':['mean', 'median', airline], # mean, meadian, longest delay airline
+                 'DEP_ARR':top_months} # Top three month of number of flight
+    )).rename(columns={'mean':'mean_delay', 'median':'median_delay'}) # Rename column names
+    agg.columns = agg.columns.droplevel(0) # Drop top column categories
+    return agg
 
 
 # ---------------------------------------------------------------------
@@ -146,8 +260,47 @@ def depart_arrive_stats(flights):
     >>> out.max() < 0.30
     True
     """
+    flights_late = flights[['MONTH', 'DEPARTURE_DELAY', 'ARRIVAL_DELAY']].copy() # Deep copy
 
-    return ...
+    # Helper function: leave late, arrive early/on time
+    def late1(series):
+        """
+        Get proportion of plane leave late, arrive early/on time.
+
+        :param series: departure delay
+        :return: proportion of leave late, arrive early/on time
+        """
+
+        count = flights_late[(series > 0) & (flights_late['ARRIVAL_DELAY'] <= 0)].shape[0]
+        return count / flights_late.shape[0]
+
+    # Helper function: leave early/on time, arrive late
+    def late2(series):
+        """
+        Get proportion of plane leave early/on time, arrive late.
+
+        :param series: departure delay
+        :return: proportion of leave early/on time, arrive late
+        """
+
+        count = flights_late[(series <= 0) & (flights_late['ARRIVAL_DELAY'] > 0)].shape[0]
+        return count / flights_late.shape[0]
+
+
+    # Helper function: leave late, arrive late
+    def late3(series):
+        """
+        Get proportion of plane leave late, arrive late.
+
+        :param series: departure delay
+        :return: proportion of leave late, arrive late
+        """
+
+        count = flights_late[(series > 0) & (flights_late['ARRIVAL_DELAY'] > 0)].shape[0]
+        return count / flights_late.shape[0]
+    
+    dep_delay = flights_late['DEPARTURE_DELAY']
+    return pd.Series({'late1':late1(dep_delay), 'late2':late2(dep_delay), 'late3':late3(dep_delay)})
 
 
 def depart_arrive_stats_by_month(flights):
@@ -165,8 +318,50 @@ def depart_arrive_stats_by_month(flights):
     >>> set(out.index) <= set(range(1, 13))
     True
     """
+    flights_late = flights[['MONTH', 'DEPARTURE_DELAY', 'ARRIVAL_DELAY']].copy() # Deep copy
 
-    return ...
+    # Helper function: leave late, arrive early/on time
+    def late1(series):
+        """
+        Get proportion of plane leave late, arrive early/on time.
+
+        :param series: departure delay
+        :return: proportion of leave late, arrive early/on time
+        """
+
+        count = flights_late[(series > 0) & (flights_late['ARRIVAL_DELAY'] <= 0)].shape[0]
+        return count / flights_late.shape[0]
+
+    # Helper function: leave early/on time, arrive late
+    def late2(series):
+        """
+        Get proportion of plane leave early/on time, arrive late.
+
+        :param series: departure delay
+        :return: proportion of leave early/on time, arrive late
+        """
+
+        count = flights_late[(series <= 0) & (flights_late['ARRIVAL_DELAY'] > 0)].shape[0]
+        return count / flights_late.shape[0]
+
+
+    # Helper function: leave late, arrive late
+    def late3(series):
+        """
+        Get proportion of plane leave late, arrive late.
+
+        :param series: departure delay
+        :return: proportion of leave late, arrive late
+        """
+
+        count = flights_late[(series > 0) & (flights_late['ARRIVAL_DELAY'] > 0)].shape[0]
+        return count / flights_late.shape[0]
+    
+    agg_late = (flights_late
+     .groupby('MONTH')
+     .aggregate({'DEPARTURE_DELAY':[late1, late2, late3]}))
+    agg_late.columns = agg_late.columns.droplevel(0) # Drop top column categories
+    return agg_late
 
 
 # ---------------------------------------------------------------------
@@ -189,9 +384,14 @@ def cnts_by_airline_dow(flights):
     True
     >>> (out >= 0).all().all()
     True
-    """
-
-    return ...
+        """
+    count_tab = flights.pivot_table(
+        values='YEAR', 
+        index='DAY_OF_WEEK',
+        columns='AIRLINE',
+        aggfunc='count'
+    )
+    return count_tab
 
 
 def mean_by_airline_dow(flights):
@@ -210,8 +410,13 @@ def mean_by_airline_dow(flights):
     >>> set(out.index) == set(flights['DAY_OF_WEEK'].unique())
     True
     """
-
-    return ...
+    mean_tab = flights.pivot_table(
+        values='ARRIVAL_DELAY', 
+        index='DAY_OF_WEEK',
+        columns='AIRLINE',
+        aggfunc='mean'
+    )
+    return mean_tab
 
 
 # ---------------------------------------------------------------------
