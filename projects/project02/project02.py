@@ -82,12 +82,12 @@ def data_kinds():
     True
     """
 
-    return ({'YEAR': 'Q',
+    return ({'YEAR': 'O',
              'MONTH': 'O', # Month can be ordinal and quantitative
              'DAY': 'O', 
              'DAY_OF_WEEK': 'O', # DayOfWeek can be ordinal and quantitative
              'AIRLINE': 'N',
-             'FLIGHT_NUMBER': 'N', 
+             'FLIGHT_NUMBER': 'N',
              'TAIL_NUMBER': 'N',
              'ORIGIN_AIRPORT': 'N',
              'DESTINATION_AIRPORT': 'N',
@@ -105,8 +105,8 @@ def data_kinds():
              'SCHEDULED_ARRIVAL': 'Q',
              'ARRIVAL_TIME': 'Q',
              'ARRIVAL_DELAY': 'Q',
-             'DIVERTED': 'Q', # boolean would be ordinal? Where is ordinal number???
-             'CANCELLED': 'Q',# boolean would be ordinal?
+             'DIVERTED': 'O', # boolean would be ordinal?
+             'CANCELLED': 'O',# boolean would be ordinal?
              'CANCELLATION_REASON': 'N',
              'AIR_SYSTEM_DELAY': 'Q',
              'SECURITY_DELAY': 'Q',
@@ -128,37 +128,37 @@ def data_types():
     True
     """
 
-    return ({'YEAR': int,
-             'MONTH': int,
-             'DAY': int,
-             'DAY_OF_WEEK': int,
-             'AIRLINE': str,
-             'FLIGHT_NUMBER': str,
-             'TAIL_NUMBER': str,
-             'ORIGIN_AIRPORT': str,
-             'DESTINATION_AIRPORT': str,
-             'SCHEDULED_DEPARTURE': int,
-             'DEPARTURE_TIME': float,
-             'DEPARTURE_DELAY': float,
-             'TAXI_OUT': float,
-             'WHEELS_OFF': float,
-             'SCHEDULED_TIME': int,
-             'ELAPSED_TIME': float,
-             'AIR_TIME': float,
-             'DISTANCE': int,
-             'WHEELS_ON': float,
-             'TAXI_IN': float,
-             'SCHEDULED_ARRIVAL': int,
-             'ARRIVAL_TIME': float,
-             'ARRIVAL_DELAY': float,
-             'DIVERTED': bool,
-             'CANCELLED': bool,
-             'CANCELLATION_REASON': str,
-             'AIR_SYSTEM_DELAY': float,
-             'SECURITY_DELAY': float,
-             'AIRLINE_DELAY': float,
-             'LATE_AIRCRAFT_DELAY': float,
-             'WEATHER_DELAY': float})
+    return ({'YEAR': 'int',
+             'MONTH': 'int',
+             'DAY': 'int',
+             'DAY_OF_WEEK': 'int',
+             'AIRLINE': 'str',
+             'FLIGHT_NUMBER': 'str',
+             'TAIL_NUMBER': 'str',
+             'ORIGIN_AIRPORT': 'str',
+             'DESTINATION_AIRPORT': 'str',
+             'SCHEDULED_DEPARTURE': 'int',
+             'DEPARTURE_TIME': 'float',
+             'DEPARTURE_DELAY': 'float',
+             'TAXI_OUT': 'float',
+             'WHEELS_OFF': 'float',
+             'SCHEDULED_TIME': 'int',
+             'ELAPSED_TIME': 'float',
+             'AIR_TIME': 'float',
+             'DISTANCE': 'int',
+             'WHEELS_ON': 'float',
+             'TAXI_IN': 'float',
+             'SCHEDULED_ARRIVAL': 'int',
+             'ARRIVAL_TIME': 'float',
+             'ARRIVAL_DELAY': 'float',
+             'DIVERTED': 'bool',
+             'CANCELLED': 'bool',
+             'CANCELLATION_REASON': 'str',
+             'AIR_SYSTEM_DELAY': 'float',
+             'SECURITY_DELAY': 'float',
+             'AIRLINE_DELAY': 'float',
+             'LATE_AIRCRAFT_DELAY': 'float',
+             'WEATHER_DELAY': 'float'})
 
 
 # ---------------------------------------------------------------------
@@ -438,7 +438,7 @@ def predict_null_arrival_delay(row):
     >>> set(out.unique()) - set([True, False]) == set()
     True
     """
-    return ...
+    return None
 
 
 def predict_null_airline_delay(row):
@@ -459,7 +459,7 @@ def predict_null_airline_delay(row):
     True
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -480,7 +480,7 @@ def perm4missing(flights, col, N):
     True
     """
 
-    return ...
+    return None
 
 
 def dependent_cols():
@@ -497,7 +497,7 @@ def dependent_cols():
     True
     """
 
-    return ...
+    return None
 
 
 def missing_types():
@@ -519,7 +519,7 @@ def missing_types():
     True
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -547,7 +547,7 @@ def prop_delayed_by_airline(jb_sw):
     True
     """
 
-    return ...
+    return None
 
 
 def prop_delayed_by_airline_airport(jb_sw):
@@ -572,7 +572,7 @@ def prop_delayed_by_airline_airport(jb_sw):
     True
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -599,7 +599,7 @@ def verify_simpson(df, group1, group2, occur):
     False
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
@@ -623,7 +623,7 @@ def search_simpsons(jb_sw, N):
     True
     """
 
-    return ...
+    return None
 
 
 # ---------------------------------------------------------------------
