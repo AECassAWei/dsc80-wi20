@@ -22,8 +22,11 @@ def latest_login(login):
     >>> result.loc[381, "Time"].hour > 12
     True
     """
+    login_latest = login.copy() # Deep copy
+    login_latest['Time'] = login_latest['Time'].apply(pd.to_datetime) # Convert to datetime
+    time_of_day = login_latest.groupby('Login Id', as_index=True).max()[['Time']] # Get max (latest) time
+    return time_of_day
 
-    return ...
 
 # ---------------------------------------------------------------------
 # Question # 2
@@ -44,8 +47,13 @@ def smallest_ellapsed(login):
     >>> 18 < result.loc[1233, "Time"].days < 23
     True
     """
+    counts = login['Login Id'].value_counts() # Counts occurrence
+    indices = counts[counts > 1].index # Login Id of more than once
 
-    return ...
+    login_more = login[login['Login Id'].isin(indices)].copy() # Deep copy, more than once
+    login_more['Time'] = login_more['Time'].apply(pd.to_datetime)
+    elapsed = login_more.groupby('Login Id').aggregate({'Time':(lambda x: np.min(np.diff(list(x))))})
+    return elapsed
 
 
 # ---------------------------------------------------------------------
@@ -67,8 +75,8 @@ def total_seller(df):
     True
 
     """
-    
-    return ...
+    total_seller = df.groupby('Name').sum()[['Total']]
+    return total_seller
 
 
 def product_name(df):
@@ -83,8 +91,15 @@ def product_name(df):
     >>> out.loc["pen"].isnull().sum()
     0
     """
-    
-    return ...
+    product_name = df.pivot_table(
+            values=['Total'], 
+            index='Product',
+            columns='Name',
+            aggfunc={'Total':'sum'}
+        )
+
+    return product_name
+
 
 def count_product(df):
     """
@@ -98,8 +113,14 @@ def count_product(df):
     >>> out.size
     70
     """
-    
-    return ...
+    count_product = df.pivot_table(
+            values=['Total'], 
+            index=['Product', 'Name'],
+            columns='Date',
+            aggfunc='sum',
+            fill_value=0
+        )
+    return count_product
 
 
 def total_by_month(df):
@@ -114,8 +135,17 @@ def total_by_month(df):
     >>> out.shape[1]
     5
     """
-    
-    return ...
+    sales_by_month = df.copy() # Deep copy
+    sales_by_month = sales_by_month.assign(Month=pd.to_datetime(sales_by_month['Date']).dt.month_name()) # Add Month column
+    total_by_month = sales_by_month.pivot_table(
+            values=['Total'], 
+            index=['Name', 'Product'],
+            columns='Month',
+            aggfunc='sum',
+            fill_value=0
+        )
+    return total_by_month
+
 
 # ---------------------------------------------------------------------
 # Question # 4
@@ -136,8 +166,8 @@ def diff_of_means(data, col='orange'):
     >>> 0 <= out
     True
     """
-    
-    return ...
+    by_orange = data.groupby('Factory').mean()[col]
+    return np.abs(by_orange['Waco'] - by_orange['Yorkville']) # Answer
 
 
 def simulate_null(data, col='orange'):
@@ -156,8 +186,15 @@ def simulate_null(data, col='orange'):
     >>> 0 <= out <= 1.0
     True
     """
-    
-    return ...
+    shuffled_counts = (
+        data[col]
+        .sample(replace=False, frac=1)
+        .reset_index(drop=True)
+    )
+
+    shuffled_oranges = data.assign(**{'shuffled' + col: shuffled_counts})
+
+    return diff_of_means(shuffled_oranges, 'shuffled' + col)
 
 
 def pval_orange(data, col='orange'):
@@ -176,8 +213,13 @@ def pval_orange(data, col='orange'):
     >>> 0 <= pval <= 0.1
     True
     """
+    differences = []
+    for i in range(1000):
+        differences.append(simulate_null(data, col))
+        
+    obs = diff_of_means(data, col) # Test statistic
     
-    return ...
+    return np.count_nonzero(np.array(differences) >= obs) / 1000
 
 
 # ---------------------------------------------------------------------
@@ -203,7 +245,7 @@ def ordered_colors():
     True
     """
 
-    return ...
+    return [('yellow', 0.0), ('orange', 0.039), ('red', 0.236), ('green', 0.447), ('purple', 0.985)]
     
 
 # ---------------------------------------------------------------------
@@ -222,8 +264,8 @@ def same_color_distribution():
     >>> out[1] in ['Fail to Reject', 'Reject']
     True
     """
-    
-    return ...
+    return (0.443, 'Fail to Reject') # Answer
+
 
 # ---------------------------------------------------------------------
 # Question # 7
@@ -241,7 +283,7 @@ def perm_vs_hyp():
     True
     """
 
-    return ...
+    return ['H', 'P', 'P', 'H', 'P']
 
 
 # ---------------------------------------------------------------------
@@ -259,8 +301,13 @@ def after_purchase():
     >>> set(out) <= set(ans)
     True
     """
+    answer = (['NI', # How is NI and MCAR different?
+      'MD', # How is MD (100% dependent) and MAR different from each other
+      'MAR', # #3 How does #3 plays a part? Later return means not satisfied, then would fill it out, but not return is satisfied, then still should fill it out?
+      'MCAR', # #4 Serial number as string does not really specify any information of the product?
+      'MAR'])
+    return answer
 
-    return ...
 
 # ---------------------------------------------------------------------
 # Question # 9
@@ -280,8 +327,12 @@ def multiple_choice():
     >>> out[1] in ans
     True
     """
-
-    return ...
+    answer = (['MAR', # If on campus, then do not need to fill out address? [MD] / Or filling out address based on restaurant? [MAR]
+      'MAR', # But can also argue that Middle name is based on ethnicity? so [MAR]?
+      'MCAR', # Dependent on year, and number of sports played
+      'MD', # Does not really specify that if "YOU have gone to Sun God 2019" is a question
+      'NI']) 
+    return answer
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
