@@ -15,7 +15,8 @@ def impute_with_index(dg):
     >>> out.isnull().sum() == 0
     True
     """
-    dg['B'] = dg['B'].fillna(dg['B'].index)
+    values = dict(zip(dg.index, dg.index))
+    dg['B'] = dg['B'].fillna(value=values)
     return dg['B']
 
 
@@ -32,6 +33,7 @@ def impute_with_digit(dg):
     >>> out.isnull().sum().sum() == 0
     True
     """
-        
-    dg = dg.fillna(dg['A'] % 10)
+    values = dict(zip(dg.index, dg['A'] % 10))
+    for col in dg.columns:
+        dg[col].fillna(value=dg['A'] % 10, inplace=True, axis=0)
     return dg
