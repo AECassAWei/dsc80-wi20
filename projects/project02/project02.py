@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from itertools import combinations
 
 
 # ---------------------------------------------------------------------
@@ -438,7 +439,7 @@ def predict_null_arrival_delay(row):
     >>> set(out.unique()) - set([True, False]) == set()
     True
     """
-    return None
+    return np.isnan(row['AIR_TIME']) & np.isnan(row['ELAPSED_TIME']) # Depend on air time & elapsed time
 
 
 def predict_null_airline_delay(row):
@@ -459,7 +460,7 @@ def predict_null_airline_delay(row):
     True
     """
 
-    return None
+    return np.isnan(row['AIR_SYSTEM_DELAY']) & np.isnan(row['SECURITY_DELAY']) & np.isnan(row['LATE_AIRCRAFT_DELAY']) & np.isnan(row['WEATHER_DELAY']) # Depend on air system delay, security delay, late aircraft delay, & weather delay
 
 
 # ---------------------------------------------------------------------
@@ -479,8 +480,52 @@ def perm4missing(flights, col, N):
     >>> 0 <= out <= 1
     True
     """
+    flights_miss = flights.copy() # Deep copy
+    flights_miss['DEP_DELAY_ISNULL'] = flights_miss['DEPARTURE_DELAY'].isnull()
 
-    return None
+    emp_distributions = (
+        flights_miss
+        .pivot_table(columns='DEP_DELAY_ISNULL', index=col, values=None, aggfunc='size')
+        .fillna(0)
+        .apply(lambda x:x/x.sum())
+    )
+    # Calculate observed total variation distance
+    observed_tvd = np.sum(np.abs(emp_distributions.diff(axis=1).iloc[:,-1])) / 2
+
+    flights_missing = flights_miss.copy()[[col, 'DEP_DELAY_ISNULL']]
+    tvds = []
+    for i in range(N):
+
+        # Shuffle col
+        shuffled_airline = (
+            flights_missing[col]
+            .sample(replace=False, frac=1)
+            .reset_index(drop=True)
+        )
+
+        # Append to a shuffled dataframe
+        shuffled = (
+            flights_missing
+            .assign(**{'Shuffled ' + col: shuffled_airline})
+        )
+
+        # Create aggregated table
+        shuffed_emp_distributions = (
+            shuffled
+            .pivot_table(columns='DEP_DELAY_ISNULL', index='Shuffled ' + col, values=None, aggfunc='size')
+            .fillna(0)
+            .apply(lambda x:x/x.sum())
+        )
+
+        # Calculate total variation distance
+        tvd = np.sum(np.abs(shuffed_emp_distributions.diff(axis=1).iloc[:,-1])) / 2
+
+        tvds.append(tvd)
+
+    # pd.Series(tvds).plot(kind='hist', density=True, alpha=0.8)
+    # plt.scatter(observed_tvd, 0, color='red', s=40);
+        
+    return np.min([np.count_nonzero(np.array(tvds) >= observed_tvd) / N, np.count_nonzero(np.array(tvds) <= observed_tvd) / N])
 
 
 def dependent_cols():
@@ -497,7 +542,7 @@ def dependent_cols():
     True
     """
 
-    return None
+    return ['DAY_OF_WEEK', 'AIRLINE']
 
 
 def missing_types():
@@ -519,7 +564,7 @@ def missing_types():
     True
     """
 
-    return None
+    return pd.Series({'CANCELLED': np.nan, 'CANCELLATION_REASON':'MAR', 'TAIL_NUMBER':'MAR', 'ARRIVAL_TIME':'MD'})
 
 
 # ---------------------------------------------------------------------
@@ -546,8 +591,11 @@ def prop_delayed_by_airline(jb_sw):
     >>> len(out.columns) == 1
     True
     """
-
-    return None
+    filtered_airport = ['ABQ', 'BDL', 'BUR', 'DCA', 'MSY', 'PBI', 'PHX', 'RNO', 'SJC', 'SLC']
+    jb_sw_fil = jb_sw[jb_sw['ORIGIN_AIRPORT'].isin(filtered_airport)].copy() # Deep copy
+    # jb_sw_fil = jb_sw.copy()
+    jb_sw_fil.loc[jb_sw_fil['CANCELLED']==1, 'DEPARTURE_DELAY'] = 0 # Disregard cancelled
+    return jb_sw_fil.groupby('AIRLINE').aggregate({'DEPARTURE_DELAY':prop_delay})
 
 
 def prop_delayed_by_airline_airport(jb_sw):
@@ -571,8 +619,27 @@ def prop_delayed_by_airline_airport(jb_sw):
     >>> len(out.columns) == 6
     True
     """
+    filtered_airport = ['ABQ', 'BDL', 'BUR', 'DCA', 'MSY', 'PBI', 'PHX', 'RNO', 'SJC', 'SLC']
+    jb_sw_fil = jb_sw[jb_sw['ORIGIN_AIRPORT'].isin(filtered_airport)].copy() # Deep copy
+    # jb_sw_fil = jb_sw.copy()
+    jb_sw_fil.loc[jb_sw_fil['CANCELLED']==1, 'DEPARTURE_DELAY'] = 0 # Disregard cancelled
+    return (jb_sw_fil.pivot_table(
+            values='DEPARTURE_DELAY', 
+            index='AIRLINE', 
+            columns='ORIGIN_AIRPORT', 
+            aggfunc=prop_delay
+        ))
 
-    return None
+# Helper function to get prop of delayed flights
+def prop_delay(series):
+    """
+    Calculate the prop of delayed flights in a series.
+    
+    :param series: a series to check the flights
+    :return: the prop of delayed flights
+    """
+    # return np.count_nonzero(series < 0) / series.size()
+    return (series < 0).mean()
 
 
 # ---------------------------------------------------------------------
@@ -598,8 +665,22 @@ def verify_simpson(df, group1, group2, occur):
     >>> verify_simpson(df, 1, 2, 3)
     False
     """
-
-    return None
+    group1_agg = df.groupby(group1).aggregate({occur:prop_delay}) # Total prop
+    group2_agg = df.pivot_table(
+        values=occur, 
+        index=group1, 
+        columns=group2, 
+        aggfunc=prop_delay
+    ) # Individual prop
+    
+    order = group1_agg.sort_values(by=occur).index # Prop category order
+    paradox = True
+    for col in group2_agg.columns:
+        if group2_agg.sort_values(by=col).index.equals(order): # If any satisfy order
+            paradox = False # Then, not a paradox
+    
+    # return display(group1_agg), display(group2_agg)
+    return paradox
 
 
 # ---------------------------------------------------------------------
@@ -622,8 +703,31 @@ def search_simpsons(jb_sw, N):
     >>> len(pair) == 2
     True
     """
+    agg_count = jb_sw.pivot_table(
+        values='DEPARTURE_DELAY', 
+        index='AIRLINE', 
+        columns='ORIGIN_AIRPORT', 
+        aggfunc='count'
+    ) # Aggregated function to get count
 
-    return None
+    airports_letter = [air for air in jb_sw['ORIGIN_AIRPORT'].unique() if ((len(air)==3) & (air.isalpha()))] # 3 letter code
+    airports = agg_count[airports_letter].dropna(axis=1).columns # At least one jb/sw
+
+    airports_paradox = []
+    for com in combinations(airports, N):
+        filtered_airport = list(com)
+        jb_sw_fil = jb_sw[jb_sw['ORIGIN_AIRPORT'].isin(filtered_airport)].copy()
+        paradox = verify_simpson(jb_sw_fil, 'AIRLINE', 'ORIGIN_AIRPORT', 'DEPARTURE_DELAY') # Check if paradox
+        if paradox:
+            airports_paradox.append(filtered_airport)
+        display(jb_sw_fil.groupby('AIRLINE').aggregate({'DEPARTURE_DELAY':prop_delay}))
+        display(jb_sw_fil.pivot_table(
+                values='DEPARTURE_DELAY', 
+                index='AIRLINE', 
+                columns='ORIGIN_AIRPORT', 
+                aggfunc=prop_delay
+            ))
+    return airports_paradox
 
 
 # ---------------------------------------------------------------------
