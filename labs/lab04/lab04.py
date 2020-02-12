@@ -304,7 +304,7 @@ def after_purchase():
     answer = (['NI', # How is NI and MCAR different?
       'MD', # How is MD (100% dependent) and MAR different from each other
       'MAR', # #3 How does #3 plays a part? Later return means not satisfied, then would fill it out, but not return is satisfied, then still should fill it out?
-      'MCAR', # #4 Serial number as string does not really specify any information of the product?
+      'MCAR', # #4 Serial number as string does not really specify any information of the product? # Serial unique, NI
       'MAR'])
     return answer
 
@@ -329,9 +329,9 @@ def multiple_choice():
     """
     answer = (['MAR', # If on campus, then do not need to fill out address? [MD] / Or filling out address based on restaurant? [MAR]
       'MAR', # But can also argue that Middle name is based on ethnicity? so [MAR]?
-      'MCAR', # Dependent on year, and number of sports played
-      'MD', # Does not really specify that if "YOU have gone to Sun God 2019" is a question
-      'NI']) 
+      'MCAR', # Dependent on year, and number of sports played # MD 
+      'MD', # Does not really specify that if "YOU have gone to Sun God 2019" is a question # NI, data itself is the reason
+      'NI']) # MCAR, not affect by the value itself
     return answer
 
 # ---------------------------------------------------------------------
