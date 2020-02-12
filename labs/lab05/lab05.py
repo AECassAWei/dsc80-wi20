@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from scipy.stats import ks_2samp
 
 
 # ---------------------------------------------------------------------
@@ -18,7 +19,7 @@ def first_round():
     >>> out[1] is "NR" or out[1] is "R"
     True
     """
-    return ...
+    return [0.093, 'NR']
 
 
 def second_round():
@@ -34,7 +35,7 @@ def second_round():
     >>> out[2] is "ND" or out[2] is "D"
     True
     """
-    return ...
+    return [0.039, 'R', 'D']
 
 
 # ---------------------------------------------------------------------
@@ -54,8 +55,11 @@ def verify_child(heights):
     >>> out['child_5'] > out['child_50']
     True
     """
-
-    return ...
+    dic = {}
+    children = heights.columns[heights.columns.str.contains('^child_')] # Get children columns
+    for child in children: # Loop through child_X
+        dic.update({child:ks_permutation(heights, child, 'father')})
+    return dic
 
 
 def missing_data_amounts():
@@ -67,7 +71,54 @@ def missing_data_amounts():
     True
     """
 
-    return ...
+    return [2]
+
+# Helper function to calculate ks-statistic
+def ks_permutation(df, test, depend, N=100):
+    """
+    Given testing column and dependent column, caculate the p-value
+    using ks-statistic for N permutation round.
+    
+    :param df: dataframe containing data
+    :param test: testing column
+    :param depend: dependent column
+    :param N: N simulations
+    """
+    df_miss = df.assign(test_is_null=df[test].isnull()) # Convert to True/False
+    
+    gpA = df.loc[df_miss['test_is_null'], depend]
+    gpB = df.loc[~df_miss['test_is_null'], depend]
+    obs_ks, p_val = ks_2samp(gpA, gpB) # Get the ks observed value
+    
+    kslist = []
+    for _ in range(N):
+
+        # shuffle the dependent column
+        shuffled_dep = (
+            df_miss[depend]
+            .sample(replace=False, frac=1)
+            .reset_index(drop=True)
+        )
+
+        # 
+        shuffled = (
+            df_miss
+            .assign(**{'Shuffled ' + depend: shuffled_dep})
+        )
+
+        ks, _ = ks_2samp(
+            shuffled.loc[shuffled['test_is_null'], 'Shuffled ' + depend],
+            shuffled.loc[~shuffled['test_is_null'], 'Shuffled ' + depend]
+        )
+
+        # add it to the list of results
+        kslist.append(ks)
+    
+    # pd.Series(kslist).plot(kind='hist', density=True, alpha=0.8)
+    # plt.scatter(obs_ks, 0, color='red', s=40);
+    
+    # return np.min([np.count_nonzero(kslist >= obs_ks) / len(kslist), np.count_nonzero(kslist <= obs_ks) / len(kslist)])
+    return np.count_nonzero(kslist >= obs_ks) / len(kslist) #, np.count_nonzero(kslist <= obs_ks) / len(kslist)])
 
 
 # ---------------------------------------------------------------------
@@ -91,8 +142,10 @@ def cond_single_imputation(new_heights):
     >>> (df.child.std() - out.std()) > 0.5
     True
     """
-
-    return ...
+    quartile_heights = new_heights.assign(quartile=pd.qcut(new_heights['father'], 4)) # Find the quartile for each height of father
+    child_mean = quartile_heights.groupby('quartile')['child'].transform('mean') # A series of child mean heights
+    imputed = new_heights['child'].fillna(pd.Series(child_mean))
+    return imputed
 
 # ---------------------------------------------------------------------
 # Question # 4
@@ -115,9 +168,18 @@ def quantitative_distribution(child, N):
     True
     >>> np.isclose(out.mean(), child.mean(), atol=1)
     True
-    """
-
-    return ...
+    """  
+    binned = np.histogram(child.dropna(), bins=10) # Value counts (first line)
+    prop = binned[0] / binned[0].sum() # proportion of bins
+    bins = binned[1] # N + 1 bin boundaries
+    # print(prop)
+    indices = np.random.choice(a=10, p=prop, size=N)
+    # print(np.sum(indices == 8) / 10000)
+    samples = []
+    for ind in indices: # Loop through samples
+        lower, upper = bins[ind], bins[ind+1] # Upper and lower bounds of bin
+        samples.append(np.random.uniform(low=lower, high=upper))
+    return np.array(samples)
 
 
 def impute_height_quant(child):
@@ -136,8 +198,9 @@ def impute_height_quant(child):
     >>> np.isclose(out.mean(), child.mean(), atol=0.5)
     True
     """
-
-    return ...
+    child_dist = quantitative_distribution(child, len(child))
+    imputed = child.fillna(pd.Series(child_dist)) # Fill NaN with distribution values
+    return imputed
 
 
 # ---------------------------------------------------------------------
@@ -155,10 +218,13 @@ def answers():
     >>> len(list2)
     6
     """
-    return ...
-
-
-
+    answer = (['https://soundcloud.com/', # 1. soundcloud, some disallow
+               'https://cfmriweb.ucsd.edu/', # 1. wiki, some disallow
+               'https://www.thesaurus.com/', # 1. thesaurus, some disallow
+               'https://ucsd.sona-systems.com/', # 2. SONA, disallow completely
+               'https://www.linkedin.com/', # 2. LinkedIn, disallow completely
+               'https://facebook.com/'])  # 2. Facebook, disallow completely
+    return answer
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
