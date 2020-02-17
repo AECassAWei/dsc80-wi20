@@ -118,7 +118,7 @@ def ks_permutation(df, test, depend, N=100):
     # plt.scatter(obs_ks, 0, color='red', s=40);
     
     # return np.min([np.count_nonzero(kslist >= obs_ks) / len(kslist), np.count_nonzero(kslist <= obs_ks) / len(kslist)])
-    return np.count_nonzero(kslist >= obs_ks) / len(kslist) #, np.count_nonzero(kslist <= obs_ks) / len(kslist)])
+    return np.count_nonzero(np.array(kslist) >= obs_ks) / len(kslist) #, np.count_nonzero(kslist <= obs_ks) / len(kslist)])
 
 
 # ---------------------------------------------------------------------
@@ -218,12 +218,13 @@ def answers():
     >>> len(list2)
     6
     """
-    answer = (['https://soundcloud.com/', # 1. soundcloud, some disallow
+    answer = ([[1, 2, 2, 1], # 3. Not necessarily legal if terms of service disallow
+               ['https://soundcloud.com/', # 1. soundcloud, some disallow
                'https://cfmriweb.ucsd.edu/', # 1. wiki, some disallow
                'https://www.thesaurus.com/', # 1. thesaurus, some disallow
                'https://ucsd.sona-systems.com/', # 2. SONA, disallow completely
                'https://www.linkedin.com/', # 2. LinkedIn, disallow completely
-               'https://facebook.com/'])  # 2. Facebook, disallow completely
+               'https://facebook.com/']])  # 2. Facebook, disallow completely
     return answer
 
 # ---------------------------------------------------------------------
