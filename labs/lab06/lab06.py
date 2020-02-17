@@ -89,7 +89,7 @@ def stock_history(ticker, year, month):
     as a dataframe
 
     >>> history = stock_history('BYND', 2019, 6)
-    >>> history.shape == (20, 12)
+    >>> history.shape == (20, 13)
     True
     >>> history.label.iloc[0]
     'June 03, 19'
@@ -156,7 +156,7 @@ def check_for_graded_elements():
     >>> check_for_graded_elements()
     True
     """
-    
+
     for q, elts in GRADED_FUNCTIONS.items():
         for elt in elts:
             if elt not in globals():
