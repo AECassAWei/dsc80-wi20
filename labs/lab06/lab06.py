@@ -43,13 +43,13 @@ def extract_book_links(text):
     >>> out[1] == url
     True
     """
-    soup = bs4.BeautifulSoup(text, 'lxml')
+    soup = bs4.BeautifulSoup(text, 'html.parser')
     urls = []
     for book in soup.find_all('article', attrs={'class':'product_pod'}):
         # title = book.find('h3').a.get('title') # Title of the book
         url = book.find('h3').a.get('href') # Url of the book
         rating = book.find('p', attrs={'class':'star-rating'}).get('class')[1] # Rating of the book
-        price = float(book.find('p', attrs={'class':'price_color'}).text.strip('£')) # Price of the book
+        price = float(book.find('p', attrs={'class':'price_color'}).text.strip('Â').strip('£')) # Price of the book
 
         if (rating in ['Four', 'Five']) and (price < 50): # Rating at least four star, price less than £50
             urls.append(url)
@@ -68,14 +68,14 @@ def get_product_info(text, categories):
     >>> out['Rating']
     'Two'
     """
-    soup = bs4.BeautifulSoup(text, 'lxml')
+    soup = bs4.BeautifulSoup(text, 'html.parser')
     headers = ['Availability', 'Category', 'Description', 'Number of reviews', 'Price (excl. tax)', 'Price (incl. tax)', 'Product Type', 'Rating', 'Tax', 'Title', 'UPC'] # Headers of the dictionary
 
     # Type, Category and Title
     gens = soup.find('body', attrs={'id':'default'}).find('div', attrs={'class':'container-fluid'}).find_all('li')
     ptype, category, title = gens[1].text.strip(), gens[2].text.strip(), gens[3].text.strip() # Get product type, category, title
     if category not in categories: # Book not what we want
-            return None
+        return None
 
     # Availability, Description, Number of reviews, Price, Tax, Rating, UPC
     article = soup.find('article', attrs={'class':'product_page'})
@@ -123,7 +123,6 @@ def scrape_books(k, categories):
     url = 'http://books.toscrape.com/'
     web = requests.get(url)
     for _ in range(k):
-        # print(_)
         url_text = web.text # Get text of page
         book_links = extract_book_links(url_text) # Get book_links at least four star, price less than 50
 
@@ -131,7 +130,6 @@ def scrape_books(k, categories):
             for link in book_links: # Loop through book links
                 if link[0:10] != 'catalogue/': # Fix no found urls
                     link = 'catalogue/' + link
-                # print(url + link)
                 book_text = requests.get(url + link).text
                 dic = get_product_info(book_text, categories)
                 df = df.append(dic, ignore_index=True) # Append met book to df
@@ -145,7 +143,6 @@ def scrape_books(k, categories):
         app = nxt.find('a').get('href') # Next page url appendant
         if app[0:10] != 'catalogue/': # Fix no found urls
             app = 'catalogue/' + app
-        print(app)
         web = requests.get(url + app)
     return df
 
@@ -164,7 +161,7 @@ def stock_history(ticker, year, month):
     >>> history.label.iloc[0]
     'June 03, 19'
     """
-    url = 'https://financialmodelingprep.com/api/v3/historical-price-full/' + ticker
+    url = 'https://financialmodelingprep.com/api/v3/historical-price-full/' + ticker # Is this the right way???????????
     response = requests.get(url)
     data = response.text
     js = json.loads(data) # Load json data
@@ -172,9 +169,7 @@ def stock_history(ticker, year, month):
     # Construct dataframe from js file
     df = pd.DataFrame()
     for day in js.get('historical'):
-        df = df.append(day, ignore_index=True, sort=False)
-    # df = df.assign(year=pd.to_datetime(df['date']).dt.year)
-    # df = df.assign(month=pd.to_datetime(df['date']).dt.month)
+        df = df.append(day, ignore_index=True)
     return df[(pd.to_datetime(df['date']).dt.year == year) & (pd.to_datetime(df['date']).dt.month == month)]
 
 
@@ -194,11 +189,11 @@ def stock_stats(history):
     """
     open_id = pd.to_datetime(history['date']).idxmin()
     close_id = pd.to_datetime(history['date']).idxmax()
-    close_p = history.loc[close_id, 'close'] # Close price for month
     open_p = history.loc[open_id, 'open'] # Opening price for month
+    close_p = history.loc[close_id, 'close'] # Close price for month
     pct_change = (close_p - open_p) / open_p * 100
 
-    tot_tran = ((history['close'] + history['open']) / 2 * history['volume'] / 1000000000).sum()
+    tot_tran = ((history['high'] + history['low']) / 2 * history['volume'] / 1000000000).sum()
     
     change = '%+.2f' % (pct_change) + '%'
     tran = '%.2f' % (tot_tran) + 'B'
@@ -234,7 +229,7 @@ def get_comments(storyid):
         by = com.get('by') # Author
         parent = com.get('parent') # Parent id
         text = com.get('text') # Comment text
-        time = pd.to_datetime(com.get('time')) # Time of comment # How to change it to datetime??????????????????????????????
+        time = pd.to_datetime(com.get('time'), unit='s') # Time of comment
 
         content = [idx, by, parent, text, time] # Content list
         comment = dict(zip(cols, content)) # Zip into dataframe
