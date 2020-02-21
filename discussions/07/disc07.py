@@ -11,8 +11,10 @@ def url_list():
     >>> len(url_list()) > 1
     True
     """
-
-    return ...
+    url_list = []
+    for num in range(0, 26):
+        url_list.append('http://example.webscraping.com/places/default/index/' + str(num))
+    return url_list
 
 
 def request_until_successful(url, N):
@@ -27,6 +29,13 @@ def request_until_successful(url, N):
     >>> resp = request_until_successful('http://example.webscraping.com/', N=1)
     >>> isinstance(resp, requests.models.Response) or (resp is None)
     True
-    """
-
-    return ...
+    """    
+    if N==0:
+        return None
+    
+    rq = requests.get(url)
+    
+    if rq.status_code != 200 and N>0:
+        return request_until_successful(url, N-1)
+    
+    return rq
