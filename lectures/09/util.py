@@ -25,8 +25,9 @@ def permutation_test(data, col, group_col, test_statistic, N=1000):
     # run the permutations
     shuffled_stats = []
     for _ in range(N):
-        
-        shuffled = data[group_col].sample(frac=1, replace=False).reset_index(drop=True)
+
+        shuffled = data[group_col].sample(
+            frac=1, replace=False).reset_index(drop=True)
         with_shuffled = data[[col]].assign(shuffled=shuffled)
         shuffled_stat = test_statistic(with_shuffled, col, 'shuffled')
         shuffled_stats.append(shuffled_stat)
@@ -49,14 +50,14 @@ def tvd(data, col, group_col):
     tvd = (
         data
         .pivot_table(
-            index=col, 
-            columns=group_col, 
-            aggfunc='size', 
+            index=col,
+            columns=group_col,
+            aggfunc='size',
             fill_value=0
         )
         .apply(lambda x: x / x.sum())
         .diff(axis=1).iloc[:, -1].abs().sum() / 2
-        )
+    )
 
     return tvd
 
@@ -67,7 +68,7 @@ def ks(data, col, group_col):
     assumed to be categorical."""
 
     from scipy.stats import ks_2samp
-    
+
     # should have only two values in column
     valA, valB = data[group_col].unique()
     ks, _ = ks_2samp(
@@ -92,8 +93,8 @@ def make_mcar(data, col, pct=0.5):
 
 def make_mar_on_cat(data, col, dep_col, pct=0.5):
     """Create MAR from complete data. The dependency is
-    created on dep_col, which is assumed to be categorical. 
-    This is only *one* of many ways to create MAR data. 
+    created on dep_col, which is assumed to be categorical.
+    This is only *one* of many ways to create MAR data.
     For the lecture examples only."""
 
     missing = data.copy()
@@ -109,7 +110,7 @@ def make_mar_on_cat(data, col, dep_col, pct=0.5):
 def make_mar_on_num(data, col, dep_col, pct=0.5):
     """Create MAR from complete data. The dependency is
     created on dep_col, which is assumed to be numeric.
-    This is only *one* of many ways to create MAR data. 
+    This is only *one* of many ways to create MAR data.
     For the lecture examples only."""
 
     thresh = np.percentile(data[dep_col], 50)
@@ -126,5 +127,3 @@ def make_mar_on_num(data, col, dep_col, pct=0.5):
 
     missing.loc[idx, col] = np.NaN
     return missing
-    
-    
