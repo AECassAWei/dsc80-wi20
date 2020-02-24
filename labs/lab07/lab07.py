@@ -24,6 +24,7 @@ import re
 
 def match_1(string):
     """
+    A string that has a [ as the third character and ] as the sixth character.
     >>> match_1("abcde]")
     False
     >>> match_1("ab[cde")
@@ -45,7 +46,6 @@ def match_1(string):
     #Do not edit following code
     prog = re.compile(pattern)
     return prog.search(string) is not None
-
 
 
 def match_2(string):
@@ -77,8 +77,6 @@ def match_2(string):
     #Do not edit following code
     prog = re.compile(pattern)
     return prog.search(string) is not None
-
-
 
 
 def match_3(string):
@@ -195,7 +193,6 @@ def match_6(string):
     return prog.search(string) is not None
 
 
-
 def match_7(string):
     """
     Find patterns that start with and end with a _
@@ -209,13 +206,12 @@ def match_7(string):
     False
     """
 
+    #Your Code Here
     pattern = ...
 
     #Do not edit following code
     prog = re.compile(pattern)
     return prog.search(string) is not None
-
-
 
 
 def match_8(string):
@@ -239,6 +235,7 @@ def match_8(string):
     True
     """
 
+    #Your Code Here
     pattern = ...
 
     #Do not edit following code
@@ -246,9 +243,15 @@ def match_8(string):
     return prog.search(string) is not None
 
 
-
 def match_9(string):
-    '''
+    """
+    Check if a given ID number is from Los Angeles (LAX), San Diego(SAN) or
+    the state of New York (NY). ID numbers have the following format SC-NN-CCC-NNNN.
+        - SC represents state code in uppercase
+        - NN represents a number with 2 digits
+        - CCC represents a three letter city code in uppercase
+        - NNNN represents a number with 4 digits
+    
     >>> match_9('NY-32-NYC-1232')
     True
     >>> match_9('ca-23-SAN-1231')
@@ -257,9 +260,9 @@ def match_9(string):
     False
     >>> match_9('CA-56-LAX-7895')
     True
-    '''
+    """
 
-
+    #Your Code Here
     pattern = ...
 
     #Do not edit following code
@@ -268,12 +271,13 @@ def match_9(string):
 
 
 def match_10(string):
-    '''
+    """
     Given an input string, cast it to lower case, remove spaces/punctuation, 
     and return a list of every 3-character substring that satisfy the following:
         - The first character doesn't start with 'a' or 'A'
         - The last substring (and only the last substring) can be shorter than 
         3 characters, depending on the length of the input string.
+        - The substrings cannot overlap
     
     >>> match_10('ABCdef')
     ['def']
@@ -285,11 +289,9 @@ def match_10(string):
     []
     >>> match_10( "Ab..DEF")
     ['def']
-
-    '''
+    """
 
     return ...
-
 
 
 # ---------------------------------------------------------------------
