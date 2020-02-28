@@ -102,8 +102,11 @@ class UniformLM(object):
         >>> (unif.mdl == 0.25).all()
         True
         """
-
-        return ...
+        if len(tokens) == 0: # Empty tokens
+            return pd.Series(dtype=float).astype(float)
+        
+        index = pd.Series(tokens).unique() # Word index
+        return pd.Series([1 / len(index)] * len(index), index=index)
     
     def probability(self, words):
         """
@@ -121,8 +124,13 @@ class UniformLM(object):
         >>> unif.probability(('one', 'two')) == 0.0625
         True
         """
-
-        return ...
+        prob = 1
+        for w in words: # Loop through words
+            if w not in self.mdl.index: # Not in tokens
+                return 0
+            else: # Get prob
+                prob *= self.mdl.loc[w] 
+        return prob
         
     def sample(self, M):
         """
@@ -141,10 +149,10 @@ class UniformLM(object):
         >>> np.isclose(s, 0.25, atol=0.05).all()
         True
         """
+        ran = self.mdl.sample(M, replace=True)
+        return ' '.join(ran.index)
 
-        return ...
 
-            
 # ---------------------------------------------------------------------
 # Question #4
 # ---------------------------------------------------------------------
@@ -178,8 +186,9 @@ class UnigramLM(object):
         >>> unig.mdl.loc['one'] == 3 / 7
         True
         """
-
-        return ...
+        if len(tokens) == 0: # Empty tokens
+            return pd.Series(dtype=float).astype(float)
+        return pd.Series(tokens).value_counts(normalize=True)
     
     def probability(self, words):
         """
@@ -198,8 +207,13 @@ class UnigramLM(object):
         >>> np.isclose(p, 0.12244897959, atol=0.0001)
         True
         """
-
-        return ...
+        prob = 1
+        for w in words: # Loop through words
+            if w not in self.mdl.index: # Not in tokens
+                return 0
+            else: # Get prob
+                prob *= self.mdl.loc[w] 
+        return prob
         
     def sample(self, M):
         """
@@ -217,8 +231,8 @@ class UnigramLM(object):
         >>> np.isclose(s, 0.41, atol=0.05).all()
         True
         """
-
-        return ...
+        ran = np.random.choice(self.mdl.index, p=self.mdl.values, size=M)
+        return ' '.join(ran)
         
     
 # ---------------------------------------------------------------------

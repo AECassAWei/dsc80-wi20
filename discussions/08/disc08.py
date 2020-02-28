@@ -17,7 +17,15 @@ def rmse(datasets):
     True
     """
 
-    return ...
+    arr, ind = [], []
+    for k, v in datasets.items():
+        lm = linregress(v.X, v.Y) # Fit model
+        pred = lambda x: lm.slope * x + lm.intercept # Function
+        pred_y = pred(v.X) # Predicted Y
+        rmse = np.sqrt(np.mean((pred_y - v.Y)**2)) # RMSE
+        arr.append(rmse)
+        ind.append(k)
+    return pd.Series(arr, index=ind)
 
 
 def heteroskedasticity(datasets):
@@ -32,5 +40,20 @@ def heteroskedasticity(datasets):
     >>> isinstance(out, pd.Series)
     True
     """
+    arr, ind = [], []
+    for k, v in datasets.items():    
+        lm = linregress(v.X, v.Y) # Fit model
+        pred = lambda x: lm.slope * x + lm.intercept # Function
+        pred_y = pred(v.X) # Predicted Y
+        res_sq = (pred_y - v.Y)**2
+        lms = linregress(v.X, res_sq) # Residuals regression
+        p_val = lms.pvalue
 
-    return ...
+        if p_val < 0.05:
+            arr.append(True)
+        else: 
+            arr.append(False)
+
+        ind.append(k)
+        # print(p_val)
+    return pd.Series(arr, index=ind)
