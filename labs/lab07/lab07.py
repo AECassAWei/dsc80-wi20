@@ -39,9 +39,11 @@ def match_1(string):
     True
     >>> match_1("1b[#d] _")
     True
+    >>> match_1(" `[  ] _")
+    True
     """
     #Your Code Here
-    pattern = ...
+    pattern = '^.{2}\[.{2}\]'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -72,7 +74,7 @@ def match_2(string):
     False
     """
     #Your Code Here
-    pattern = ...
+    pattern = '^\(858\) \d{3}-\d{4}$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -103,8 +105,7 @@ def match_3(string):
     False
     """
     #Your Code Here
-
-    pattern = ...
+    pattern = '^[\w \\?]{5,9}\?$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -138,9 +139,11 @@ def match_4(string):
     False
     >>> match_4("$s$Bca")
     False
+    >>> match_4("$s12B5rf';.t A$aABbbBBcCcCc")
+    True
     """
     #Your Code Here
-    pattern = ...
+    pattern = '^\$[^abc]*\$[Aa]+[Bb]+[Cc]+$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -160,10 +163,14 @@ def match_5(string):
     False
     >>> match_5("dsc80+.py")
     False
+    >>> match_5("Prj78Je_.py")
+    True
+    >>> match_5(".py")
+    False
     """
 
     #Your Code Here
-    pattern = ...
+    pattern = '^[\w]+\.py$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -186,7 +193,7 @@ def match_6(string):
     """
 
     #Your Code Here
-    pattern = ...
+    pattern = '^[a-z]+\_[a-z]+$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -204,10 +211,14 @@ def match_7(string):
     False
     >>> match_7("_ncde")
     False
+    >>> match_7("__")
+    True
+    >>> match_7("_")
+    False
     """
-
+    
     #Your Code Here
-    pattern = ...
+    pattern = '^\_.*\_$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -233,10 +244,12 @@ def match_8(string):
     False
     >>> match_8("ASDJKL9380JKAL")
     True
+    >>> match_8("ASDJKL9380JKALIIIo000")
+    True
     """
 
     #Your Code Here
-    pattern = ...
+    pattern = '^[^O1i]*$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -260,10 +273,14 @@ def match_9(string):
     False
     >>> match_9('CA-56-LAX-7895')
     True
+    >>> match_9('MA-11-LAX-0101')
+    False
+    >>> match_9('NY-36-BOS-5465')
+    True
     """
 
     #Your Code Here
-    pattern = ...
+    pattern = '(^NY)|(^CA-[0-9]{2}-((LAX)|(SAN))-[0-9]{4}$)'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -272,7 +289,7 @@ def match_9(string):
 
 def match_10(string):
     """
-    Given an input string, cast it to lower case, remove spaces/punctuation, 
+    Given an input string, cast it to lower case, remove spaces/punctuations, 
     and return a list of every 3-character substring that satisfy the following:
         - The first character doesn't start with 'a' or 'A'
         - The last substring (and only the last substring) can be shorter than 
@@ -289,9 +306,17 @@ def match_10(string):
     []
     >>> match_10( "Ab..DEF")
     ['def']
+    >>> match_10( "Ab..AEF")
+    []
+    >>> match_10( " t^racf_a..AEFcj")
+    ['trc', 'j']
     """
-
-    return ...
+    no_space = string.replace(' ', '') # Remove space
+    lower_case = no_space.lower() # Cast to lower space
+    complete = re.sub(r'a.{2}', '', lower_case) # Remove a 3-char 
+    no_punc = re.sub(r'[^A-Za-z0-9 ]', '', complete) # Remove punctuations
+    com_sequence = re.findall(r'..?.?', no_punc) # Find complete three-character sequence
+    return com_sequence
 
 
 # ---------------------------------------------------------------------
@@ -313,8 +338,28 @@ def extract_personal(s):
     >>> addresses[0] == '530 High Street'
     True
     """
+    # Pattern of each category
+    email_pat = r'([A-Za-z0-9]+@[A-Za-z0-9]+(\.[A-Za-z0-9]+)+)'
+    ssn_pat = r'[0-9]{3}-[0-9]{2}-[0-9]{4}'
+    bit_pat = r'[13][A-Za-z0-9]{26,33}' 
+    add_pat = r'(\d+( [A-z]+)+)' 
 
-    return ...
+    # Get email address
+    email_group = re.findall(email_pat, s)
+    emails = [group[0] for group in email_group]
+
+    # Get social security number
+    ssns = re.findall(ssn_pat, s) 
+    # ssns = [group[0] for group in ssn_group]
+
+    # Get bitcoin address
+    bits = re.findall(bit_pat, s)
+
+    # Get address
+    adds_group = re.findall(add_pat, s)
+    adds = [group[0] for group in adds_group]
+    return (emails, ssns, bits, adds)
+
 
 # ---------------------------------------------------------------------
 # Question # 3
@@ -332,7 +377,32 @@ def tfidf_data(review, reviews):
     >>> 'before' in out.index
     True
     """
-    return ...
+    # Check review frequency
+    words = review.split() # Split review words
+    uniquewords = pd.Series(words).unique() # Get unique review words
+    freq = dict.fromkeys(uniquewords, 0) # Get frequency
+    for word in words:
+        freq[word] += 1
+
+    # Check number of documents word appear
+    all_uniquewords = reviews.str.split().apply(lambda x: pd.Series(x).unique()) # All words in all reviews
+    all_freq = dict.fromkeys(uniquewords, 0) # Get the number of documents word appear
+    for word in uniquewords: # Word
+        for un in all_uniquewords: # Single review of reviews
+            if word in un:
+                all_freq[word] += 1 # Appear in one review
+
+    check = pd.DataFrame(columns=['cnt', 'tf', 'idf', 'tfidf'], index=uniquewords)  # tfidf dataframe
+    for word in uniquewords:
+        re_pat = '\\b%s\\b' % word # Word pattern
+        cnt = freq.get(word) # Frequency
+        tf = cnt / len(words) # tf
+        idf = np.log(len(reviews) / all_freq.get(word)) # idf
+        # Put into dataframe
+        check.loc[word, 'cnt'], check.loc[word, 'tfidf'] = cnt, tf * idf
+        check.loc[word, 'tf'], check.loc[word, 'idf'] = tf, idf
+
+    return check
 
 
 def relevant_word(out):
@@ -345,7 +415,7 @@ def relevant_word(out):
     >>> relevant_word(out) in out.index
     True
     """
-    return ...
+    return out.sort_values('tfidf', ascending=False).index[0]
 
 
 # ---------------------------------------------------------------------
@@ -361,8 +431,10 @@ def hashtag_list(tweet_text):
     >>> (out.iloc[0] == ['NLP', 'NLP1', 'NLP1'])
     True
     """
-
-    return ...
+    hashtag_pat = '#(\w+)' # Hash Tag pattern
+    prog = re.compile(hashtag_pat) # Compile
+    tags = tweet_text.apply(lambda x: prog.findall(x)) # Find all
+    return tags
 
 
 def most_common_hashtag(tweet_lists):
@@ -373,8 +445,22 @@ def most_common_hashtag(tweet_lists):
     >>> most_common_hashtag(test).iloc[0]
     'NLP1'
     """
+    freq = pd.Series(tweet_lists.sum()) # Total Frequency Series
+    counts = freq.value_counts() # Count occurrences
 
-    return ...
+    def most_common(tweet_list):
+        """Helper function to compute one single list"""
+        if len(tweet_list) == 0: # Empty list
+            return np.nan
+
+        if len(tweet_list) == 1: # One elem
+            return tweet_list[0]
+
+        for com in counts.index: # Highest to lowest freq
+            if com in tweet_list: # Check if in tweet
+                return com
+    
+    return tweet_lists.apply(most_common)
 
 
 # ---------------------------------------------------------------------
@@ -395,7 +481,53 @@ def create_features(ira):
     True
     """
 
-    return ...
+    def tag_list(tweet_text):
+        """Helper function to get the tag list"""
+        tag_pat = '@\w+' # Hash Tag pattern
+        prog = re.compile(tag_pat) # Compile
+        tags = tweet_text.apply(lambda x: prog.findall(x)) # Find all
+        # tags = tup.apply(lambda x: [group[0] for group in x]) # Get full tags
+        return tags
+
+    def link_list(tweet_text):
+        """Helper function to get the hyperlink list"""
+        link_pat = 'https?:\/\/(?! )*.' # Hash Tag pattern
+        prog = re.compile(link_pat) # Compile
+        links = tweet_text.apply(lambda x: prog.findall(x)) # Find all
+        return links
+
+    def is_retweet(tweet_text):
+        """Helper function to check if retweet"""
+        rt_pat = '^RT' # Hash Tag pattern
+        prog = re.compile(rt_pat) # Compile
+        rt = tweet_text.apply(lambda x: prog.findall(x)) # Find all
+        return rt.apply(lambda x: True if len(x) != 0 else False)
+
+    def clean_text(tweet_text):
+        """Helper function to clean single text string"""
+        remove_rt = re.sub(r'^RT', '', tweet_text) # Remove Retweet
+        remove_hash = re.sub(r'#\w+', '', remove_rt) # Remove hashtags
+        remove_tags = re.sub(r'@\w+', '', remove_hash) # Remove tags
+        remove_link = re.sub('https?:\/\/(?! )*.+', '', remove_tags) # Remove links
+        substitute = re.sub(r'[^A-Za-z0-9 ]', ' ', remove_link) # Remove non-alphanumeric
+        space = re.sub(r' +', ' ', substitute) # Fix space
+        lower = space.lower().strip() # Lowercase
+        return lower
+
+    tweet_text = ira['text']
+    tweet_lists = hashtag_list(tweet_text) # List of hashtags
+    num_hashtags = tweet_lists.apply(len) # Number of hashtags
+    mc_hashtags = most_common_hashtag(tweet_lists) # Most common hashtags
+    num_tags = tag_list(tweet_text).apply(len) # Number of tags
+    num_links = link_list(tweet_text).apply(len) # Number of links
+    is_retweet = is_retweet(tweet_text) # If tweet is retweeted
+    text = tweet_text.apply(clean_text) # Cleaned text
+    
+    # Make dataframe
+    cols = ['text', 'num_hashtags', 'mc_hashtags', 'num_tags', 'num_links', 'is_retweet']
+    content = [text, num_hashtags, mc_hashtags, num_tags, num_links, is_retweet]
+    index = ira.index
+    return pd.DataFrame(dict(zip(cols, content)), index = ira.index)
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
