@@ -30,8 +30,16 @@ def get_book(url):
     >>> book_string[:20] == '\\n\\n\\n\\n\\nProduced by Chu'
     True
     """
-    
-    return ...
+    text = requests.get(url).text
+    time.sleep(5) # Delay for 5 seconds
+
+    # Transform \r\n with \n newline
+    subtext = re.sub(r'\r\n', '\n', text) 
+
+    # Extract content from START to END
+    pat = '\*\*\* START OF THIS PROJECT GUTENBERG EBOOK .* \*\*\*([\S\s]*)\*\*\* END OF THIS PROJECT GUTENBERG EBOOK'
+    content = re.search(pat, subtext).group(1)
+    return content
     
 # ---------------------------------------------------------------------
 # Question #2
@@ -63,8 +71,15 @@ def tokenize(book_string):
     >>> '(' in tokens
     True
     """
+    begin = re.sub(r'^(\n *)*', '\x02', book_string) # Begin of file
+    final = re.sub(r'(\n *)+$', '\x03', begin) # End of file
+    middle = re.sub(r'(\n *){2,}', '\x03\x02 ', final) # Middle start/stop of parag
+    no_line = re.sub(r'\n', ' ', middle) # Other new lines with space
 
-    return ...
+    slist = re.split(pattern=r'(?=\x02|\x03)|(?<=\x02|\x03)|\b', string=no_line)
+    slist = list(map(str.strip, filter(str.strip, slist))) # Filter empty, strip space
+    return slist
+
     
 # ---------------------------------------------------------------------
 # Question #3
@@ -280,8 +295,10 @@ class NGramLM(object):
         >>> out[2]
         ('two', 'three')
         """
-        
-        return ...
+        ngrams = []
+        for i in range(len(tokens)- self.N + 1):
+            ngrams.append(tuple(tokens[i:i+self.N]))
+        return ngrams
         
     def train(self, ngrams):
         """
@@ -358,7 +375,6 @@ class NGramLM(object):
         ...
 
         return ...
-
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
