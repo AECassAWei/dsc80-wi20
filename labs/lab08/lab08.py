@@ -8,7 +8,6 @@ from sklearn.preprocessing import Binarizer, QuantileTransformer, FunctionTransf
 # Question # 1
 # ---------------------------------------------------------------------
 
-
 def best_transformation():
     """
     Returns an integer corresponding to the correct option.
@@ -21,12 +20,12 @@ def best_transformation():
     # take log and square root of the dataset
     # look at the fit of the regression line (and R^2)
 
-    return ...
+    return 1
+
 
 # ---------------------------------------------------------------------
 # Question # 2
 # ---------------------------------------------------------------------
-
 
 def create_ordinal(df):
     """
@@ -42,13 +41,35 @@ def create_ordinal(df):
     >>> np.unique(out['ordinal_cut']).tolist() == [0, 1, 2, 3, 4]
     True
     """
-    
-    return ...
+    # Helper function to change categorical into ordinal number
+    def cat2ordinal(col, order):
+        name = 'ordinal_' + col.name # Name of column
+        ordinal = []
+        for elem in col: # Loop through elem in col
+            for ind in range(len(order)): # Loop through order
+                if elem == order[ind]:
+                    ordinal.append(ind)
+                    break # Break out for next elem
+
+        return pd.Series(ordinal, index=col.index, name=name)
+
+    # Order of ordinal columns
+    cut_order = ['Fair', 'Good', 'Very Good', 'Premium', 'Ideal']
+    color_order = ['J', 'I', 'H', 'G' , 'F', 'E', 'D']
+    clarity_order = ['I1', 'SI2', 'SI1', 'VS2', 'VS1', 'VVS2', 'VVS1', 'IF']
+
+    # Get ordinal data
+    cut_ordinal = cat2ordinal(df['cut'], cut_order)
+    color_ordinal = cat2ordinal(df['color'], color_order)
+    clarity_ordinal = cat2ordinal(df['clarity'], clarity_order)
+
+    out = pd.DataFrame(data=[cut_ordinal, color_ordinal, clarity_ordinal]).T
+    return out
+
 
 # ---------------------------------------------------------------------
 # Question # 3
 # ---------------------------------------------------------------------
-
 
 def create_one_hot(df):
     """
@@ -67,8 +88,29 @@ def create_one_hot(df):
     >>> out.isin([0,1]).all().all()
     True
     """
-    
-    return ...
+
+    # Helper function to change categorical into onehot encoding
+    def cat2onehot(col):
+        ohe_name = 'one_hot_' + col.name + '_' # Prefix of onehot col name
+        unique_val = np.array(col.unique()) # Unique values
+        unique_val.sort()
+        ohe_names = [] # onehot columns names
+        for value in unique_val: # Get unique values in col
+            ohe_names.append(ohe_name+value)
+
+        ohe = []
+        for elem in col: # Loop through column values
+            # Create hit/not hit
+            ohe.append((unique_val == elem) * 1.0)
+
+        return pd.DataFrame(data=ohe, index=col.index, columns=ohe_names)
+
+    # Get onehot dataframe
+    cut_ohe = cat2onehot(df['cut'])
+    color_ohe = cat2onehot(df['color'])
+    clarity_ohe = cat2onehot(df['clarity'])
+
+    return pd.concat([cut_ohe, color_ohe, clarity_ohe], axis=1, sort=False)
 
 
 def create_proportions(df):
@@ -88,12 +130,23 @@ def create_proportions(df):
     True
     """
 
-    return ...
+    # Helper function to change categorical into prop encoding
+    def cat2prop(col):
+        prop = col.value_counts(normalize=True) # Normalized (prop)
+        replaced = col.replace(to_replace=prop.index, value=prop.values) # Replace val with prop
+        return replaced.rename('proportion_' + col.name)
+
+    # Get prop data
+    cut_prop = cat2prop(df['cut'])
+    color_prop = cat2prop(df['color'])
+    clarity_prop = cat2prop(df['clarity'])
+
+    return pd.DataFrame(data=[cut_prop, color_prop, clarity_prop]).T
+
 
 # ---------------------------------------------------------------------
 # Question # 4
 # ---------------------------------------------------------------------
-
 
 def create_quadratics(df):
     """
@@ -112,8 +165,17 @@ def create_quadratics(df):
     >>> out.shape[1] == 15
     True
     """
-        
-    return ...
+    continu_cols = ['carat', 'x', 'y', 'z', 'depth', 'table']
+    polynomial = []
+    for i in range(len(continu_cols) - 1): # Loop through continous columns
+        col_m = df[continu_cols[i]] # ith col
+        for j in range(i+1, len(continu_cols)): # Loop through cols after ith
+            col_n = df[continu_cols[j]] # jth col
+            name = col_m.name + ' * ' + col_n.name # Poly col name
+            values = pd.Series(col_m * col_n, name=name) # Quadratics value
+            polynomial.append(values)
+
+    return pd.DataFrame(polynomial).T
 
 
 # ---------------------------------------------------------------------
@@ -138,13 +200,19 @@ def comparing_performance():
     """
 
     # create a model per variable => (variable, R^2, RMSE) table
+    # Answer
+    rsquare = 0.8493305264354857 # Q1
+    rmse = 1548.5331930613174 # Q2
+    second_best = 'x' # Q3
+    best_new_feature = 'carat * x' # Q4
+    best_category = 'ordinal_color' # Q5
+    percent_decrease = 0.27459218931913376 # Q6
+    return [rsquare, rmse, second_best, best_new_feature, best_category, percent_decrease]
 
-    return ...
 
 # ---------------------------------------------------------------------
 # Question # 6, 7, 8
 # ---------------------------------------------------------------------
-
 
 class TransformDiamonds(object):
     
@@ -167,8 +235,9 @@ class TransformDiamonds(object):
         >>> transformed[0, 0] == 0
         True
         """
-
-        return ...
+        bi = Binarizer(threshold = 0.999) # initialize with the parameter
+        binarized = bi.transform(data[['carat']].values) # called transform on a data 
+        return binarized
     
     def transform_to_quantile(self, data):
         """
@@ -187,8 +256,10 @@ class TransformDiamonds(object):
         >>> np.isclose(transformed[1,0], 0, atol=1e-06)
         True
         """
-
-        return ...
+        qt = QuantileTransformer() # , output_distribution='normal'
+        ft = qt.fit(self.data[['carat']].values)
+        transformed = ft.transform(data[['carat']].values)
+        return transformed
     
     def transform_to_depth_pct(self, data):
         """
@@ -205,8 +276,17 @@ class TransformDiamonds(object):
         >>> np.isclose(transformed[0], 61.286, atol=0.0001)
         True
         """
+        # Custom function to calc depth percentage
+        def depth_pct(arrs):
+            depth_pct = []
+            for arr in arrs:
+                x, y, z = arr[0], arr[1], arr[2]
+                depth_pct.append(100 * z / ((x + y) / 2))
+            return np.array(depth_pct)
 
-        return ...
+        trans = FunctionTransformer(depth_pct, validate=True)
+        transformed = trans.transform(data[['x', 'y', 'z']].values)
+        return transformed
 
 
 # ---------------------------------------------------------------------
