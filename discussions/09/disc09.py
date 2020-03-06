@@ -16,8 +16,8 @@ class LowStdColumnDropper(BaseEstimator, TransformerMixin):
         """
         ...
         """
-
-        self.columns_ = ...
+        
+        self.columns_ = X
         
         return self
 
@@ -32,5 +32,6 @@ class LowStdColumnDropper(BaseEstimator, TransformerMixin):
         True
         """
         
+        m = pd.DataFrame(X)
         
-        return ...
+        return m.loc[:,~(m.apply(np.std) < self.thresh)].to_numpy()

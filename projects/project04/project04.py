@@ -316,20 +316,29 @@ class NGramLM(object):
         >>> bigrams.mdl['prob'].min() == 0.5
         True
         """
-
+        unique_ngrams = pd.Series(ngrams).unique()
         # ngram counts C(w_1, ..., w_n)
-        ...
+        n1grams, c_ngram, c_n1gram = [], [], []
+        for ngram in ngrams:
+            n1grams.append(ngram[:-1]) # Construct n1gram
+            c_ngram.append(ngrams.count(ngram)) # ngram occurrence
+        
         # n-1 gram counts C(w_1, ..., w_(n-1))
-        ...
+        for n1gram in n1grams:
+            c_n1gram.append(n1grams.count(n1gram))
 
         # Create the conditional probabilities
-        ...
+        probs = np.array(c_ngram) / np.array(c_n1gram)
         
         # Put it all together
+        ngram_col = pd.Series(ngrams, name='ngram')
+        n1gram_col = pd.Series(n1grams, name='n1gram')
+        prob_col = pd.Series(probs, name='prob')
 
-        ...
-
-        return ...
+        # print(c_ngram, c_n1gram)
+        df = pd.DataFrame([ngram_col, n1gram_col, prob_col]).T
+        no_dup = df.drop_duplicates('ngram').reset_index(drop=True)
+        return no_dup
     
     def probability(self, words):
         """
@@ -348,8 +357,34 @@ class NGramLM(object):
         >>> bigrams.probability('one two five'.split()) == 0
         True
         """
+        if len(words) == 0:
+            return 0
+        
+        prob = 1
+        model = self.mdl
+        
+        words_ngram = NGramLM(self.N, []).create_ngrams(words) # Create NGram model for words
+        for ngram in words_ngram:
+            # Never seen before ngram or n-1gram
+            if (ngram not in list(model['ngram'])) or (ngram[:-1] not in list(model['n1gram'])):
+                return 0
+            if isinstance(self, NGramLM):
+                prob *= model[model['ngram'] == ngram]['prob'].values[0]
+        
+        def recur_prob(model, w):
+            prob = 1
+            prev_mod = model.prev_mdl
+            if isinstance(prev_mod, UnigramLM): # Unigram base case
+                prob *= prev_mod.mdl[w[0]]
+            else:
+                words_n1gram = NGramLM(prev_mod.N, []).create_ngrams(w) # Create NGram model for words
+                prob *= prev_mod.mdl[prev_mod.mdl['ngram'] == words_n1gram[0]]['prob'].values[0]
+                prob *= recur_prob(prev_mod, words_n1gram[0]) # Recursive call
+            return prob
 
-        return ...
+        prob *= recur_prob(self, words_ngram[0])
+        
+        return prob
 
     def sample(self, M):
         """
@@ -367,14 +402,48 @@ class NGramLM(object):
         >>> set(samp.split()) <= {'\\x02', '\\x03', 'one', 'two', 'three', 'four'}
         True
         """
+        # Helper function to get mdls
+        def recur_mdl(model, lst):
+            if isinstance(model, UnigramLM): # Base case
+                return
+    
+            recur_mdl(model.prev_mdl, lst)
+            lst.append(model)
+            return lst
+        
+        tokens = ['\x02'] # START token
 
         # Use a helper function to generate sample tokens of length `length`
-        ...
+        mdls = recur_mdl(self, []) # List of models
+
+        if M <= self.N: # Before model ngrams
+            mdls = mdls[:M]
+        else: # If reach model ngrams
+            for _ in range(M - self.N + 1): # Append additional used models
+                mdls.append(mdls[-1])
+
+        tups = tuple('\x02'.split()) # First word depend on '\x02'
+        for mdl in mdls: # Loop through used models
+            probs = mdl.mdl[mdl.mdl['n1gram'] == tups] # Get ngrams and probability dataframe
+            if len(probs.ngram) == 0: # No word to choose
+                ran = '\x03' # Append '\x03'
+                break
+            else:
+                random = np.random.choice(probs.ngram, p=probs.prob) # Choose token based on probs
+                ran = random[-1]
+                
+                if mdl.N < self.N: # If still smaller than N
+                    tups = random
+                else: # ngram models
+                    tups = random[1:]
+
+            tokens.append(ran) # Append
+        
+        for _ in range(M - len(tokens)): # Fill the gap of missing due to '\x03'
+            tokens.append('\x03')
         
         # Transform the tokens to strings
-        ...
-
-        return ...
+        return ' '.join(tokens)
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
