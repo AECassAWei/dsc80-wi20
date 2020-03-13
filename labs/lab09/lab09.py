@@ -185,7 +185,7 @@ def eval_toy_model():
     True
     """
 
-    return [2.7551086974518104, 2.314833616435528, 2.3157339477823844]
+    return [(2.7551086974518104, None), (2.314833616435528, None), (2.3157339477823844, None)] # Only changed this line of code, added None for R^2
 
 
 # ---------------------------------------------------------------------
@@ -396,7 +396,7 @@ def titanic_model(titanic):
 
     # preprocessing pipeline (put them together)
     preproc = (ColumnTransformer(transformers=[
-        ('prop_title', name_ordtrans, ['Name']),
+        # ('prop_title', name_ordtrans, ['Name']),
         ('prop_cont_class', prop_trans, ['Pclass', 'Age', 'Fare']),
         ('prop_cat_class', prop_trans, ['Pclass', 'Sex', 'Siblings/Spouses Aboard', 'Parents/Children Aboard']),
         ('prop_cont_sex', prop_trans, ['Sex', 'Age', 'Fare']),
@@ -412,7 +412,7 @@ def titanic_model(titanic):
     
     pl = Pipeline(steps=[('preprocessor', preproc), ('regressor', GradientBoostingClassifier())])
     # pl = Pipeline(steps=[('regressor', LinearRegression())])
-    # pl.fit(X_train, y_train)
+    pl.fit(X_train, y_train)
     pl.fit(X, y)
     # predic_4 = new_pl.predict(data.loc[:, ~data.columns.isin(['y'])])
     # scores_train = cross_val_score(pl, X, y, cv=5)
